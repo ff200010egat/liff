@@ -7,30 +7,58 @@
 
 <style>
 body {
-  font-family: system-ui, sans-serif;
+  font-family: system-ui, -apple-system, sans-serif;
   padding: 16px;
+  background:#fafafa;
 }
-h2 { font-size: 24px; margin-bottom: 4px; }
-.role { font-size: 18px; margin-bottom: 16px; }
+
+h2 {
+  font-size: 26px;
+  margin-bottom: 6px;
+}
+
+#username {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+#role {
+  font-size: 18px;
+  margin-bottom: 16px;
+  color:#555;
+}
 
 button {
   width: 100%;
-  padding: 16px;
+  padding: 18px;
   font-size: 20px;
-  margin-bottom: 12px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: none;
   cursor: pointer;
+  margin-bottom: 12px;
 }
-.primary { background:#0a7cff; color:#fff; }
-.danger { background:#e53935; color:#fff; }
-.secondary { background:#eee; }
+
+.primary {
+  background:#0a7cff;
+  color:#fff;
+}
+
+.secondary {
+  background:#e0e0e0;
+}
+
+.danger {
+  background:#e53935;
+  color:#fff;
+}
 
 input {
   width:100%;
-  padding:14px;
+  padding:16px;
   font-size:18px;
   margin-bottom:10px;
+  border-radius:10px;
+  border:1px solid #ccc;
 }
 </style>
 </head>
@@ -39,10 +67,15 @@ input {
 
 <h2>ระบบจองรถ หก-มน.</h2>
 <div id="username"></div>
-<div class="role" id="role"></div>
+<div id="role"></div>
 
-<button class="primary">จองรถพร้อมคนขับ</button>
+<!-- 🔵 ปุ่มหลัก -->
+<button id="mainBtn" class="primary"></button>
 
+<!-- 🔵 ปุ่มรอง -->
+<button id="subBtn" class="secondary"></button>
+
+<!-- 🔵 กล่อง driver -->
 <div id="driverBox"></div>
 
 <script>
@@ -53,7 +86,6 @@ let mobile = "";
 
 async function init() {
   await liff.init({ liffId: "2008934745-qU0fPztf" });
-
   if (!liff.isLoggedIn()) liff.login();
 
   const profile = await liff.getProfile();
@@ -78,12 +110,24 @@ async function init() {
 
 function render() {
   document.getElementById("role").innerText =
-    userRole === "driver" ? "พนักงานขับรถ" : "ผู้ใช้งานทั่วไป";
+    userRole === "driver"
+      ? "บทบาท: พนักงานขับรถ"
+      : "บทบาท: ผู้ใช้งานทั่วไป";
 
+  const mainBtn = document.getElementById("mainBtn");
+  const subBtn = document.getElementById("subBtn");
   const box = document.getElementById("driverBox");
+
   box.innerHTML = "";
 
   if (userRole === "user") {
+    /* ===== USER ===== */
+    mainBtn.innerText = "จองรถพร้อมคนขับ";
+    mainBtn.onclick = () => alert("ไปหน้าแบบฟอร์มจองรถ");
+
+    subBtn.innerText = "ดูประวัติการจอง";
+    subBtn.onclick = () => alert("แสดงประวัติการจองของคุณ");
+
     box.innerHTML = `
       <input id="phone" placeholder="เบอร์มือถือสำหรับติดต่อ" value="${mobile}">
       <button class="secondary" onclick="registerDriver()">
@@ -91,8 +135,15 @@ function render() {
       </button>
     `;
   } else {
+    /* ===== DRIVER ===== */
+    mainBtn.innerText = "งานทั้งหมด";
+    mainBtn.onclick = () => alert("แสดงงานที่กำลังจะเกิดทั้งหมด");
+
+    subBtn.innerText = "ดูประวัติงาน (เดือนนี้)";
+    subBtn.onclick = () => alert("แสดงประวัติงานย้อนหลังของเดือนนี้");
+
     box.innerHTML = `
-      <div>เบอร์โทร: ${mobile}</div>
+      <div style="margin-bottom:8px">เบอร์โทร: ${mobile}</div>
       <button class="danger" onclick="cancelDriver()">
         ยกเลิกสถานะพนักงานขับรถ
       </button>
@@ -100,6 +151,7 @@ function render() {
   }
 }
 
+/* ===== DRIVER ACTIONS ===== */
 async function registerDriver() {
   const phone = document.getElementById("phone").value.trim();
   if (!phone) return alert("กรุณากรอกเบอร์โทร");
