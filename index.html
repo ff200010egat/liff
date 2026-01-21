@@ -69,13 +69,9 @@ input {
 <div id="username"></div>
 <div id="role"></div>
 
-<!-- 🔵 ปุ่มหลัก -->
 <button id="mainBtn" class="primary"></button>
-
-<!-- 🔵 ปุ่มรอง -->
 <button id="subBtn" class="secondary"></button>
 
-<!-- 🔵 กล่อง driver -->
 <div id="driverBox"></div>
 
 <script>
@@ -126,11 +122,10 @@ function render() {
     mainBtn.onclick = () => alert("ไปหน้าแบบฟอร์มจองรถ");
 
     subBtn.innerText = "ดูประวัติการจอง";
-    subBtn.onclick = () => alert("แสดงประวัติการจองของคุณ");
+    subBtn.onclick = () => alert("แสดงประวัติการจอง");
 
     box.innerHTML = `
-      <input id="phone" placeholder="เบอร์มือถือสำหรับติดต่อ" value="${mobile}">
-      <button class="secondary" onclick="registerDriver()">
+      <button class="secondary" onclick="showDriverRegister()">
         ลงทะเบียนเป็นพนักงานขับรถ
       </button>
     `;
@@ -143,7 +138,9 @@ function render() {
     subBtn.onclick = () => alert("แสดงประวัติงานย้อนหลังของเดือนนี้");
 
     box.innerHTML = `
-      <div style="margin-bottom:8px">เบอร์โทร: ${mobile}</div>
+      <div style="margin-bottom:8px">
+        เบอร์โทรติดต่อ: <strong>${mobile}</strong>
+      </div>
       <button class="danger" onclick="cancelDriver()">
         ยกเลิกสถานะพนักงานขับรถ
       </button>
@@ -151,11 +148,14 @@ function render() {
   }
 }
 
-/* ===== DRIVER ACTIONS ===== */
-async function registerDriver() {
-  const phone = document.getElementById("phone").value.trim();
-  if (!phone) return alert("กรุณากรอกเบอร์โทร");
+function showDriverRegister() {
+  const phone = prompt("กรุณากรอกเบอร์โทรสำหรับติดต่อ");
+  if (!phone) return;
 
+  registerDriver(phone);
+}
+
+async function registerDriver(phone) {
   const res = await fetch(ENDPOINT, {
     method:"POST",
     body: JSON.stringify({
