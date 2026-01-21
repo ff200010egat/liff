@@ -1,84 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <title>LIFF UserID Test</title>
-
-  <!-- LIFF SDK -->
+  <meta charset="utf-8">
+  <title>LIFF User Register</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      text-align: center;
-    }
-    button {
-      padding: 12px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    pre {
-      text-align: left;
-      background: #111;
-      color: #0f0;
-      padding: 10px;
-      margin-top: 15px;
-    }
-  </style>
 </head>
-
 <body>
 
-<h2>LIFF UserID Test</h2>
+<h2>LIFF Register User</h2>
+<button onclick="initLiff()">Init LIFF</button>
+<button onclick="registerUser()">Register User</button>
 
-<button onclick="saveUser()">บันทึก User ID</button>
-
-<pre id="log">Waiting...</pre>
+<pre id="log"></pre>
 
 <script>
 const LIFF_ID = "2008934745-qU0fPztf";
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzHqgtbBJJSFeiz7kFMKQsM2CjN6s0UBVCu18mEKZQs-TXf372V4ICzpBRj_vezgVhA8w/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyrNta5RfTKA9LtrY9azs9UBo3UXg-Kc_-BCdbNIJA9S4T5kVmU0nNmqOOjQdSMd-7rYQ/exec";
 
 function log(msg) {
-  document.getElementById("log").textContent += "\n" + msg;
+  document.getElementById("log").textContent += msg + "\n";
 }
 
-async function init() {
-  log("Init LIFF...");
-  await liff.init({ liffId: LIFF_ID });
+async function initLiff() {
+  try {
+    log("init liff...");
+    await liff.init({ liffId: LIFF_ID });
 
-  if (!liff.isLoggedIn()) {
-    log("Not logged in → login()");
-    liff.login();
-    return;
+    if (!liff.isLoggedIn()) {
+      log("redirect to login");
+      liff.login();
+      return;
+    }
+
+    log("liff ready");
+  } catch (e) {
+    log("init error: " + e);
   }
-
-  log("LIFF Ready");
 }
 
-async function saveUser() {
+async function registerUser() {
   try {
     const profile = await liff.getProfile();
-    log("UserID: " + profile.userId);
 
-    const res = await fetch(GAS_URL, {
+    log("userId = " + profile.userId);
+
+    await fetch(GAS_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userId: profile.userId
+        line_user_id: profile.userId,
+        display_name: profile.displayName
       })
     });
 
-    const result = await res.json();
-    log("Saved: " + JSON.stringify(result));
-
-  } catch (err) {
-    log("ERROR: " + err.message);
+    alert("บันทึกผู้ใช้แล้ว");
+  } catch (e) {
+    log("register error: " + e);
   }
 }
-
-init();
 </script>
 
 </body>
