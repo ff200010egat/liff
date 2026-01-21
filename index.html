@@ -17,7 +17,7 @@
 <script>
 /* ===== CONFIG ===== */
 const LIFF_ID = "2008934745-qU0fPztf";
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwy2Hpc_DTbnJmhOHW65F0rx-4tPJFkw21va9e92ZrjHaPGHeuqNXu8OuEZVfzVcgYNkg/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbw13kHdXZeqS65kfDsKC0ZWIJpK9VRahVVhAQLRr78sseudAuAM27mZgDKOdbH8Aw2-eQ/exec";
 /* ================== */
 
 function log(msg) {
@@ -30,7 +30,7 @@ async function initLiff() {
     await liff.init({ liffId: LIFF_ID });
 
     if (!liff.isLoggedIn()) {
-      log("not logged in → redirect");
+      log("redirect login");
       liff.login();
       return;
     }
@@ -48,8 +48,9 @@ async function registerUser() {
     log("userId: " + profile.userId);
     log("name: " + profile.displayName);
 
-    const res = await fetch(GAS_URL, {
+    await fetch(GAS_URL, {
       method: "POST",
+      mode: "no-cors",          // ⭐ แก้ตรงนี้
       headers: {
         "Content-Type": "application/json"
       },
@@ -59,10 +60,7 @@ async function registerUser() {
       })
     });
 
-    const text = await res.text();
-    log("response: " + text);
-
-    alert("บันทึกผู้ใช้แล้ว");
+    alert("บันทึกผู้ใช้แล้ว (ส่งข้อมูลสำเร็จ)");
 
   } catch (e) {
     log("register error: " + e);
