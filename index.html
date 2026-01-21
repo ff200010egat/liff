@@ -2,138 +2,196 @@
 <html>
 <head>
 <meta charset="utf-8">
+<title>ระบบจองรถ หก-มน.</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <style>
 body {
   font-family: system-ui, sans-serif;
-  background:#fafafa;
-  padding:16px;
+  margin: 0;
+  padding: 16px;
+  background: #f5f5f5;
 }
-
-h2 { font-size:26px; margin-bottom:6px; }
-#username { font-size:20px; }
-#role { font-size:18px; color:#555; margin-bottom:16px; }
-
-button {
-  width:100%;
-  padding:18px;
-  font-size:20px;
-  border:none;
-  border-radius:14px;
-  margin-bottom:12px;
-}
-
-.big { font-size:24px; padding:26px; background:#0a7cff; color:#fff; }
-.secondary { background:#e0e0e0; }
-.danger { background:#e53935; color:#fff; }
-
 .card {
-  background:#fff;
-  padding:14px;
-  border-radius:12px;
-  margin-bottom:12px;
-  box-shadow:0 1px 4px rgba(0,0,0,.1);
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
 }
-
-.hidden { display:none; }
+h1 {
+  margin: 0 0 8px;
+}
+button {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  border: none;
+  font-size: 16px;
+  margin-top: 8px;
+}
+.primary {
+  background: #0a7cff;
+  color: #fff;
+  font-size: 18px;
+  padding: 18px;
+}
+.secondary {
+  background: #e0e0e0;
+}
+.danger {
+  background: #ff5252;
+  color: #fff;
+}
+input, select {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+.hidden { display: none; }
 </style>
 </head>
 
 <body>
 
-<!-- HOME -->
-<div id="home">
-  <h2>ระบบจองรถ หก-มน.</h2>
-  <div id="username"></div>
-  <div id="role"></div>
-
-  <button class="big" onclick="openBooking()">จองรถพร้อมคนขับ</button>
-  <button class="secondary" onclick="openHistory()">ดูประวัติการจอง</button>
-  <div id="driverBox"></div>
+<div class="card">
+  <h1>🚗 ระบบจองรถ หก-มน.</h1>
+  <div id="displayName"></div>
+  <div id="roleText"></div>
 </div>
 
-<!-- HISTORY -->
-<div id="history" class="hidden">
-  <h2>ประวัติการจอง</h2>
-  <div id="historyList"></div>
-  <button class="secondary" onclick="backHome()">กลับ</button>
+<div class="card hidden" id="driverInfo">
+  <div>📞 เบอร์มือถือ: <span id="driverPhone"></span></div>
+  <button class="secondary" onclick="editPhone()">แก้ไขเบอร์โทร</button>
+  <button class="danger" onclick="cancelDriver()">ยกเลิกสถานะพนักงานขับรถ</button>
+</div>
+
+<div class="card">
+  <button class="primary" onclick="openBooking()">จองรถพร้อมคนขับ</button>
+
+  <button id="historyBtn" class="secondary hidden" onclick="viewHistory()">
+    ดูประวัติการจอง
+  </button>
+
+  <button id="jobBtn" class="secondary hidden" onclick="viewJobs()">
+    งานทั้งหมด
+  </button>
+
+  <button id="registerDriverBtn" class="secondary hidden" onclick="registerDriver()">
+    ลงทะเบียนเป็นพนักงานขับรถ
+  </button>
+</div>
+
+<!-- DRIVER REGISTER POPUP -->
+<div class="card hidden" id="driverPopup">
+  <h3>ลงทะเบียนเป็นพนักงานขับรถ</h3>
+  <input type="tel" id="driverMobile" placeholder="เบอร์มือถือที่ติดต่อได้">
+  <button class="primary" onclick="saveDriver()">บันทึก</button>
+  <button class="secondary" onclick="closePopup()">ยกเลิก</button>
 </div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbzhO1TQ7bvAf-0tIO75pHuYlNg4eIWeU9jTlDz4H-AJBHTSvC4mXH7diVrFrbnXAZ3StQ/exec";
-let userId="", role="", mobile="";
+/* 🔴 แก้ ENDPOINT ตรงนี้ */
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbwhB_tKrKeR7dqE1ckTWyIjut4_x4wuo9zGQWfgaijhhaLSOL1M5Ge7T7Rv8si6Y2GpMg/exec";
+
+let userId = "";
+let role = "";
+let mobile = "";
 
 async function init() {
-  await liff.init({ liffId:"2008934745-qU0fPztf" });
-  if (!liff.isLoggedIn()) liff.login();
+  await liff.init({ liffId: "2008934745-qU0fPztf" });
 
-  const p = await liff.getProfile();
-  userId = p.userId;
-  username.innerText = p.displayName;
+  const profile = await liff.getProfile();
+  userId = profile.userId;
+  displayName.innerText = profile.displayName;
 
-  const r = await fetch(ENDPOINT,{
+  const res = await fetch(ENDPOINT,{
     method:"POST",
     body:JSON.stringify({
       action:"auto_register",
       line_user_id:userId,
-      display_name:p.displayName
+      display_name:profile.displayName
     })
   }).then(r=>r.json());
 
-  role = r.role;
-  mobile = r.mobile || "";
+  role = res.role;
+  mobile = res.mobile;
 
-  role === "driver"
-    ? roleLabel("พนักงานขับรถ")
-    : roleLabel("ผู้ใช้งานทั่วไป");
+  roleText.innerText =
+    "สถานะ: " + (role === "driver" ? "พนักงานขับรถ" : "ผู้ใช้งานทั่วไป");
+
+  if (role === "driver") {
+    driverInfo.classList.remove("hidden");
+    driverPhone.innerText = mobile || "-";
+    jobBtn.classList.remove("hidden");
+  } else {
+    historyBtn.classList.remove("hidden");
+    registerDriverBtn.classList.remove("hidden");
+  }
 }
 
-function roleLabel(text){
-  role.innerText = "บทบาท: " + text;
+function registerDriver() {
+  driverPopup.classList.remove("hidden");
 }
 
-function openBooking(){ alert("ใช้ฟอร์มจองเดิม"); }
+function closePopup() {
+  driverPopup.classList.add("hidden");
+}
 
-async function openHistory() {
-  home.classList.add("hidden");
-  history.classList.remove("hidden");
-  historyList.innerHTML = "กำลังโหลด...";
-
-  const r = await fetch(ENDPOINT,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"get_my_bookings",
-      line_user_id:userId
-    })
-  }).then(r=>r.json());
-
-  historyList.innerHTML = "";
-
-  if (!r.bookings.length) {
-    historyList.innerHTML = "<p>ยังไม่มีประวัติการจอง</p>";
+async function saveDriver() {
+  if (!driverMobile.value) {
+    alert("กรุณากรอกเบอร์โทร");
     return;
   }
-
-  r.bookings.forEach(b=>{
-    historyList.innerHTML += `
-      <div class="card">
-        <strong>${b.date} ${b.time}</strong><br>
-        รถ: ${b.vehicle}<br>
-        ${b.pickup} → ${b.dropoff}<br>
-        สถานะ: ${b.status}
-      </div>
-    `;
+  await fetch(ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"register_driver",
+      line_user_id:userId,
+      mobile_phone:driverMobile.value
+    })
   });
+  alert("ลงทะเบียนเรียบร้อย");
+  location.reload();
 }
 
-function backHome(){
-  history.classList.add("hidden");
-  home.classList.remove("hidden");
+async function editPhone() {
+  const newPhone = prompt("แก้ไขเบอร์มือถือ", mobile);
+  if (!newPhone) return;
+
+  await fetch(ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"register_driver",
+      line_user_id:userId,
+      mobile_phone:newPhone
+    })
+  });
+  location.reload();
 }
+
+async function cancelDriver() {
+  if (!confirm("ยืนยันยกเลิกสถานะพนักงานขับรถ?")) return;
+  await fetch(ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"cancel_driver",
+      line_user_id:userId
+    })
+  });
+  location.reload();
+}
+
+/* navigation (placeholder) */
+function openBooking(){ alert("ไปหน้าฟอร์มจองรถ"); }
+function viewHistory(){ alert("ดูประวัติการจอง"); }
+function viewJobs(){ alert("งานทั้งหมดของพนักงานขับรถ"); }
 
 init();
 </script>
+
 </body>
 </html>
