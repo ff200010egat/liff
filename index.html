@@ -7,13 +7,54 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <style>
-body { font-family: system-ui; background:#f4f6f8; margin:0; }
+body { margin:0; font-family:system-ui; background:#f4f6f8; }
 .container { padding:16px; }
-.card { background:#fff; border-radius:14px; padding:16px; margin-bottom:14px; }
-button { width:100%; padding:16px; font-size:16px; border-radius:12px; border:none; margin-top:10px; }
-.primary { background:#0a7cff; color:#fff; font-size:18px; }
-.secondary { background:#e0e0e0; }
-input,select { width:100%; padding:14px; margin-top:10px; font-size:16px; border-radius:10px; }
+
+.card {
+  background:#fff;
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:14px;
+}
+
+h2 { margin:0; }
+.role { margin-top:6px; font-weight:bold; }
+
+button {
+  width:100%;
+  border:none;
+  border-radius:14px;
+  margin-top:10px;
+}
+
+.big {
+  padding:22px;
+  font-size:20px;
+  background:#0a7cff;
+  color:#fff;
+}
+
+.normal {
+  padding:14px;
+  font-size:16px;
+  background:#e0e0e0;
+}
+
+.danger {
+  padding:14px;
+  font-size:16px;
+  background:#ff5252;
+  color:#fff;
+}
+
+input, select {
+  width:100%;
+  padding:14px;
+  margin-top:10px;
+  font-size:16px;
+  border-radius:10px;
+}
+
 .hidden { display:none; }
 </style>
 </head>
@@ -21,51 +62,74 @@ input,select { width:100%; padding:14px; margin-top:10px; font-size:16px; border
 <body>
 <div class="container">
 
+<!-- HEADER -->
 <div class="card">
   <h2>🚗 ระบบจองรถ หก-มน.</h2>
   <div id="userName"></div>
-  <div id="userRole"></div>
+  <div id="userRole" class="role"></div>
 </div>
 
+<!-- DRIVER INFO -->
+<div class="card hidden" id="driverBox">
+  📞 เบอร์มือถือ: <span id="driverPhone"></span>
+  <button class="normal" onclick="editPhone()">แก้ไขเบอร์โทร</button>
+  <button class="danger" onclick="cancelDriver()">ยกเลิกสถานะพนักงานขับรถ</button>
+</div>
+
+<!-- ACTION -->
 <div class="card">
-  <button id="mainBtn" class="primary"></button>
-  <button id="historyBtn" class="secondary hidden">ดูประวัติการจอง</button>
-  <button id="driverBtn" class="secondary hidden">ลงทะเบียนเป็นพนักงานขับรถ</button>
+  <button id="mainBtn" class="big"></button>
+  <button id="historyBtn" class="normal hidden">ดูประวัติการจอง</button>
+  <button id="registerDriverBtn" class="normal hidden"
+    onclick="openDriverPopup()">ลงทะเบียนเป็นพนักงานขับรถ</button>
 </div>
 
+<!-- BOOKING FORM -->
 <div class="card hidden" id="bookingForm">
-  <h3>จองรถพร้อมคนขับ</h3>
+  <h3>📋 จองรถพร้อมคนขับ</h3>
+
   <input type="date" id="bookingDate">
   <input type="time" id="bookingTime">
+
   <select id="vehicleType">
     <option>ไม่ระบุ</option>
     <option>รถเก๋ง</option>
     <option>รถกระบะ</option>
     <option>รถตู้</option>
   </select>
+
   <input type="number" id="passengerCount" placeholder="จำนวนผู้โดยสาร">
   <input type="text" id="pickupLocation" placeholder="จุดรับ">
   <input type="text" id="dropoffLocation" placeholder="จุดส่ง">
   <input type="tel" id="contactMobile" placeholder="เบอร์ผู้ประสานงาน">
-  <button class="primary" onclick="submitBooking()">ยืนยันการจอง</button>
+
+  <button class="big" onclick="submitBooking()">ยืนยันการจอง</button>
+</div>
+
+<!-- DRIVER POPUP -->
+<div class="card hidden" id="driverPopup">
+  <h3>ลงทะเบียนเป็นพนักงานขับรถ</h3>
+  <input type="tel" id="driverMobile" placeholder="เบอร์มือถือที่ติดต่อได้">
+  <button class="big" onclick="saveDriver()">บันทึก</button>
 </div>
 
 </div>
 
 <script>
 const LIFF_ID = "2008934745-qU0fPztf";
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzVDHjQwF1DqVHF5v8hNyUYV590HDamwDlkS0b0rKlvjiLCegk5jZBlzsJ6W1l7_-l6mw/exec";
-let userId="", role="";
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxJ_fhLTXyfTi06PLQkQ1qtFvsHq-O1vyvA2NrIXrC1Rb0DmtHw9ZLPAH0zy2EWtTk/exec";
+
+let userId="", role="", mobile="";
 
 async function init() {
   await liff.init({ liffId: LIFF_ID });
-  if(!liff.isLoggedIn()) liff.login();
+  if (!liff.isLoggedIn()) liff.login();
 
   const p = await liff.getProfile();
   userId = p.userId;
   userName.innerText = p.displayName;
 
-  const r = await fetch(GAS_ENDPOINT,{
+  const res = await fetch(GAS_ENDPOINT,{
     method:"POST",
     body:JSON.stringify({
       action:"auto_register",
@@ -74,15 +138,27 @@ async function init() {
     })
   }).then(r=>r.json());
 
-  role = r.role;
+  role = res.role;
+  mobile = res.mobile || "";
+
   userRole.innerText = "สถานะ: " + (role==="driver"?"พนักงานขับรถ":"ผู้ใช้งานทั่วไป");
 
-  mainBtn.innerText = role==="driver" ? "งานทั้งหมด" : "จองรถพร้อมคนขับ";
-  if(role!=="driver") historyBtn.classList.remove("hidden");
+  if (role==="driver") {
+    mainBtn.innerText = "งานทั้งหมด";
+    driverBox.classList.remove("hidden");
+    driverPhone.innerText = mobile;
+  } else {
+    mainBtn.innerText = "จองรถพร้อมคนขับ";
+    historyBtn.classList.remove("hidden");
+    registerDriverBtn.classList.remove("hidden");
+  }
 
-  mainBtn.onclick = ()=> bookingForm.classList.remove("hidden");
+  mainBtn.onclick = ()=> {
+    if (role!=="driver") bookingForm.classList.remove("hidden");
+  };
 }
 
+/* BOOKING */
 async function submitBooking(){
   await fetch(GAS_ENDPOINT,{
     method:"POST",
@@ -100,6 +176,47 @@ async function submitBooking(){
   });
   alert("จองรถเรียบร้อย");
   bookingForm.classList.add("hidden");
+}
+
+/* DRIVER */
+function openDriverPopup(){ driverPopup.classList.remove("hidden"); }
+
+async function saveDriver(){
+  await fetch(GAS_ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"register_driver",
+      line_user_id:userId,
+      mobile_phone:driverMobile.value
+    })
+  });
+  location.reload();
+}
+
+async function editPhone(){
+  const p = prompt("แก้ไขเบอร์โทร", mobile);
+  if(!p) return;
+  await fetch(GAS_ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"register_driver",
+      line_user_id:userId,
+      mobile_phone:p
+    })
+  });
+  location.reload();
+}
+
+async function cancelDriver(){
+  if(!confirm("ยืนยันยกเลิกสถานะพนักงานขับรถ?")) return;
+  await fetch(GAS_ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"cancel_driver",
+      line_user_id:userId
+    })
+  });
+  location.reload();
 }
 
 init();
