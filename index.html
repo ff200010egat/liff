@@ -17,13 +17,13 @@ button,input{width:100%;padding:12px;margin-top:6px;font-size:16px}
 <h2>🚗 ระบบจองรถ</h2>
 
 <div class="card">
-  <b id="name"></b><br>
+  <b id="name">กำลังโหลด...</b><br>
   <span id="role"></span>
 </div>
 
 <div class="card">
   <button id="bookBtn" onclick="showBooking()">จองรถพร้อมคนขับ</button>
-  <button id="historyBtn" onclick="loadMyBookings()">ประวัติการจอง</button>
+  <button id="historyBtn" onclick="loadJobs()">ประวัติ / งาน</button>
   <button id="driverBtn" onclick="registerAsDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>
 </div>
 
@@ -39,15 +39,32 @@ button,input{width:100%;padding:12px;margin-top:6px;font-size:16px}
 <div id="list" class="card hidden"></div>
 
 <script>
-const GAS = "https://script.google.com/macros/s/AKfycbyf8dXphL_lkFgqm2RGuWFEsRDgRX50gSzG_fkqjA_Ze4rm6F_2nyMT2lTki_tn3308BQ/exec";
+const GAS = "https://script.google.com/macros/s/AKfycbz086Ih9aw6UY49JcA0LVtU9baeDzbchP1XKPvh-YTm-wubmWpgZ9VUkg2IKq9JgUBdmw/exec";
+
 let profile = {};
 let roleValue = 'user';
 
-async function init(){
-  await liff.init({liffId:"2008934745-qU0fPztf"});
-  if(!liff.isLoggedIn()) liff.login();
+/************ LIFF INIT (FIX RICH MENU BUG) ************/
+document.addEventListener('DOMContentLoaded', async () => {
+  await liff.init({ liffId: "2008934745-qU0fPztf" });
 
-  profile = await liff.getProfile();
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
+  }
+
+  await liff.ready;
+
+  try{
+    profile = await liff.getProfile();
+  }catch(e){
+    // fallback (สำคัญมาก)
+    const token = liff.getDecodedIDToken();
+    profile = {
+      userId: token.sub,
+      displayName: token.name || 'LINE User'
+    };
+  }
 
   const r = await post('auto_register',{
     line_user_id: profile.userId,
@@ -58,9 +75,9 @@ async function init(){
   roleValue = r.data.role;
 
   applyRoleUI();
-}
-init();
+});
 
+/************ UI ************/
 function applyRoleUI(){
   if(roleValue === 'driver'){
     role.innerText = '🚗 พนักงานขับรถ';
@@ -73,6 +90,7 @@ function applyRoleUI(){
   }
 }
 
+/************ API ************/
 function post(action,data){
   return fetch(GAS,{
     method:'POST',
@@ -80,6 +98,7 @@ function post(action,data){
   }).then(r=>r.json());
 }
 
+/************ ACTION ************/
 function showBooking(){
   booking.classList.remove('hidden');
 }
@@ -94,29 +113,21 @@ async function submitBooking(){
     contact_mobile: mobile.value
   });
 
-  if(r.success){
-    alert('✅ จองสำเร็จ');
-    booking.classList.add('hidden');
-  }else{
-    alert('❌ '+r.data);
-  }
+  alert(r.success ? '✅ จองสำเร็จ' : '❌ '+r.data);
+  booking.classList.add('hidden');
 }
 
-async function loadMyBookings(){
+async function loadJobs(){
   list.classList.remove('hidden');
   list.innerHTML = 'กำลังโหลด...';
 
-  if(roleValue === 'driver'){
-    const r = await post('get_driver_jobs',{});
-    list.innerHTML = r.data.map(b =>
-      `📅 ${b[2]} ${b[3]}<br>${b[6]} → ${b[7]}`
-    ).join('<hr>');
-  }else{
-    const r = await post('get_my_bookings',{line_user_id:profile.userId});
-    list.innerHTML = r.data.map(b =>
-      `📅 ${b[2]} ${b[3]}<br>${b[6]} → ${b[7]}`
-    ).join('<hr>');
-  }
+  const r = roleValue === 'driver'
+    ? await post('get_driver_jobs',{})
+    : await post('get_my_bookings',{line_user_id:profile.userId});
+
+  list.innerHTML = r.data.map(b =>
+    `📅 ${b[2]} ${b[3]}<br>${b[6]} → ${b[7]}`
+  ).join('<hr>');
 }
 
 async function registerAsDriver(){
