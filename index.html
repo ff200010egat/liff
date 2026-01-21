@@ -1,150 +1,146 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ระบบจองรถ</title>
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<style>
-body{font-family:sans-serif;background:#f4f4f4;padding:15px}
-.card{background:#fff;padding:15px;border-radius:10px;margin-bottom:10px}
-button,input{width:100%;padding:12px;margin-top:6px;font-size:16px}
-.hidden{display:none}
-</style>
+  <meta charset="utf-8" />
+  <title>LIFF Register</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    button { padding: 10px; margin-top: 10px; width:100%; }
+    pre { background: #f4f4f4; padding: 10px; }
+  </style>
 </head>
 <body>
 
 <h2>🚗 ระบบจองรถ</h2>
+<p id="version"></p>
 
-<div class="card">
-  <b id="name">กำลังโหลด...</b><br>
-  <span id="role"></span>
+<div>
+  <b id="name">-</b><br>
+  <span id="role">-</span>
 </div>
 
-<div class="card">
-  <button id="bookBtn" onclick="showBooking()">จองรถพร้อมคนขับ</button>
-  <button id="historyBtn" onclick="loadJobs()">ประวัติ / งาน</button>
-  <button id="driverBtn" onclick="registerAsDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>
-</div>
+<button id="driverBtn" onclick="registerDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>
 
-<div id="booking" class="card hidden">
-  <input id="date" type="date">
-  <input id="time" type="time">
-  <input id="pickup" placeholder="จุดรับ">
-  <input id="dropoff" placeholder="จุดส่ง">
-  <input id="mobile" placeholder="เบอร์ติดต่อ">
-  <button onclick="submitBooking()">ยืนยันการจอง</button>
-</div>
-
-<div id="list" class="card hidden"></div>
+<pre id="log"></pre>
 
 <script>
-const GAS = "https://script.google.com/macros/s/AKfycbz086Ih9aw6UY49JcA0LVtU9baeDzbchP1XKPvh-YTm-wubmWpgZ9VUkg2IKq9JgUBdmw/exec";
+/* ================= CONFIG ================= */
+const LIFF_ID = "2008934745-qU0fPztf";
+const GAS_ENDPOINT =
+  "https://script.google.com/macros/s/AKfycbzp3MIRbTf17lnZF0vjM9NcLW3REPl4V7StFO9ZFLLd86-TxFOjw_lrKNAi_Xj23Gpaag/exec";
 
-let profile = {};
-let roleValue = 'user';
+/* version stamp */
+document.getElementById("version").innerText =
+  "Version: " + new Date().toISOString();
 
-/************ LIFF INIT (FIX RICH MENU BUG) ************/
-document.addEventListener('DOMContentLoaded', async () => {
-  await liff.init({ liffId: "2008934745-qU0fPztf" });
+/* ================= LOG ================= */
+function log(msg) {
+  document.getElementById("log").textContent += msg + "\n";
+  console.log(msg);
+}
 
-  if (!liff.isLoggedIn()) {
+/* ================= INIT LIFF ================= */
+async function initLiff() {
+  log("init liff...");
+
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    log("liff ready");
+
+    if (!liff.isLoggedIn()) {
+      log("not logged in → redirect login");
+      liff.login();
+      return;
+    }
+
+    let profile;
+    try {
+      profile = await liff.getProfile();
+    } catch (e) {
+      // fallback สำหรับ Rich Menu
+      const token = liff.getDecodedIDToken();
+      profile = {
+        userId: token.sub,
+        displayName: token.name || "LINE User"
+      };
+    }
+
+    log("userId: " + profile.userId);
+    log("name: " + profile.displayName);
+
+    await autoRegister(profile);
+
+  } catch (err) {
+    console.error(err);
+    log("init error: " + err.message);
+
+    alert("Session หมดอายุ กำลัง login ใหม่");
+    liff.logout();
     liff.login();
-    return;
   }
+}
 
-  await liff.ready;
-
-  try{
-    profile = await liff.getProfile();
-  }catch(e){
-    // fallback (สำคัญมาก)
-    const token = liff.getDecodedIDToken();
-    profile = {
-      userId: token.sub,
-      displayName: token.name || 'LINE User'
-    };
-  }
-
-  const r = await post('auto_register',{
+/* ================= AUTO REGISTER ================= */
+async function autoRegister(profile) {
+  const payload = {
+    action: "auto_register",
     line_user_id: profile.userId,
     display_name: profile.displayName
+  };
+
+  const res = await fetch(GAS_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify(payload)
   });
 
-  name.innerText = r.data.display_name;
-  roleValue = r.data.role;
+  const text = await res.text();
+  log("GAS response: " + text);
 
-  applyRoleUI();
-});
+  const data = JSON.parse(text);
 
-/************ UI ************/
-function applyRoleUI(){
-  if(roleValue === 'driver'){
-    role.innerText = '🚗 พนักงานขับรถ';
-    driverBtn.classList.add('hidden');
-    historyBtn.innerText = 'งานที่ได้รับ';
-  }else{
-    role.innerText = '👤 ผู้ใช้งาน';
-    driverBtn.classList.remove('hidden');
-    historyBtn.innerText = 'ประวัติการจอง';
+  document.getElementById("name").innerText = data.display_name;
+  document.getElementById("role").innerText =
+    data.role === "driver" ? "🚗 พนักงานขับรถ" : "👤 ผู้ใช้งาน";
+
+  if (data.role === "driver") {
+    document.getElementById("driverBtn").style.display = "none";
   }
 }
 
-/************ API ************/
-function post(action,data){
-  return fetch(GAS,{
-    method:'POST',
-    body:JSON.stringify({...data,action})
-  }).then(r=>r.json());
-}
+/* ================= REGISTER DRIVER ================= */
+async function registerDriver() {
+  const phone = prompt("กรอกเบอร์โทร");
+  if (!phone) return;
 
-/************ ACTION ************/
-function showBooking(){
-  booking.classList.remove('hidden');
-}
-
-async function submitBooking(){
-  const r = await post('create_booking',{
-    line_user_id: profile.userId,
-    booking_date: date.value,
-    booking_time: time.value,
-    pickup_location: pickup.value,
-    dropoff_location: dropoff.value,
-    contact_mobile: mobile.value
-  });
-
-  alert(r.success ? '✅ จองสำเร็จ' : '❌ '+r.data);
-  booking.classList.add('hidden');
-}
-
-async function loadJobs(){
-  list.classList.remove('hidden');
-  list.innerHTML = 'กำลังโหลด...';
-
-  const r = roleValue === 'driver'
-    ? await post('get_driver_jobs',{})
-    : await post('get_my_bookings',{line_user_id:profile.userId});
-
-  list.innerHTML = r.data.map(b =>
-    `📅 ${b[2]} ${b[3]}<br>${b[6]} → ${b[7]}`
-  ).join('<hr>');
-}
-
-async function registerAsDriver(){
-  const phone = prompt('กรอกเบอร์โทร');
-  if(!phone) return;
-
-  const r = await post('register_driver',{
-    line_user_id: profile.userId,
+  const payload = {
+    action: "register_driver",
+    line_user_id: (await liff.getProfile()).userId,
     mobile_phone: phone
+  };
+
+  const res = await fetch(GAS_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify(payload)
   });
 
-  if(r.success){
-    roleValue = 'driver';
-    applyRoleUI();
-    alert('ลงทะเบียนพนักงานขับรถแล้ว');
-  }
+  const text = await res.text();
+  log("register_driver: " + text);
+
+  alert("ลงทะเบียนพนักงานขับรถแล้ว");
+  location.reload();
 }
+
+/* ================= FORCE LOGOUT ================= */
+function forceLogout() {
+  liff.logout();
+  alert("Logged out – เปิดใหม่เพื่อ allow อีกครั้ง");
+}
+
+/* ================= START ================= */
+initLiff();
 </script>
 
 </body>
