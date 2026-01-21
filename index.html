@@ -20,45 +20,34 @@
 <script>
 /* ===== CONFIG ===== */
 const LIFF_ID = "2008934745-qU0fPztf";
-
-/**
- * 🔴 ต้องเป็น /exec เท่านั้น
- * ตัวอย่าง:
- * https://script.google.com/macros/s/AKfycbxxxxxxx/exec
- */
-const GAS_URL = "https://script.google.com/macros/s/AKfycby6zjOWBEqJ_yPcdug83BI9ivUvvYzVGbrvb6pUcboVsDYdx2z5SWWrV41sFZvXyEYqKQ/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbywtqKQCTBVQx4Zlg7oDXAPChOi796vBm2yeld3L1sGU6ThdjKLYZ8ARKklc8D56-Bp3w/exec";
 /* ================== */
 
-/* ===== VERSION INFO ===== */
+/* ===== VERSION ===== */
 const VERSION = {
   buildTime: new Date().toISOString(),
-  gasSuffix: GAS_URL.split("/").slice(-2).join("/")
+  gas: GAS_URL.split("/").slice(-2).join("/")
 };
 
 document.getElementById("version").innerText =
   "Version: " + VERSION.buildTime +
-  "\nGAS: " + VERSION.gasSuffix;
-/* ======================== */
+  "\nGAS: " + VERSION.gas;
+/* =================== */
 
 function log(msg) {
   document.getElementById("log").textContent += msg + "\n";
 }
 
 async function initLiff() {
-  try {
-    log("init liff...");
-    await liff.init({ liffId: LIFF_ID });
+  log("init liff...");
+  await liff.init({ liffId: LIFF_ID });
 
-    if (!liff.isLoggedIn()) {
-      log("not logged in → redirect");
-      liff.login();
-      return;
-    }
-
-    log("liff ready");
-  } catch (e) {
-    log("init error: " + e);
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
   }
+
+  log("liff ready");
 }
 
 async function registerUser() {
@@ -69,23 +58,26 @@ async function registerUser() {
     log("name: " + profile.displayName);
     log("POST → " + GAS_URL);
 
-    // ⭐ ใช้ XMLHttpRequest แทน fetch (แก้ Failed to fetch 100%)
+    const payload = {
+      line_user_id: profile.userId,
+      display_name: profile.displayName
+    };
+
     const xhr = new XMLHttpRequest();
     xhr.open("POST", GAS_URL, true);
-    xhr.setRequestHeader("Content-Type", "application/json");
+
+    // ⭐ ห้ามใช้ application/json
+    xhr.setRequestHeader("Content-Type", "text/plain;charset=utf-8");
 
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) {
         log("GAS response status: " + xhr.status);
         log("GAS response text: " + xhr.responseText);
-        alert("ส่งข้อมูลเรียบร้อย (ดู log)");
+        alert("DONE");
       }
     };
 
-    xhr.send(JSON.stringify({
-      line_user_id: profile.userId,
-      display_name: profile.displayName
-    }));
+    xhr.send(JSON.stringify(payload));
 
   } catch (e) {
     log("register error: " + e);
