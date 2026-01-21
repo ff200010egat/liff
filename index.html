@@ -7,179 +7,176 @@
 
 <style>
 body {
-  font-family: system-ui, -apple-system, sans-serif;
-  padding: 16px;
+  font-family: system-ui, sans-serif;
   background:#fafafa;
+  padding:16px;
 }
 
-h2 {
-  font-size: 26px;
-  margin-bottom: 6px;
-}
-
-#username {
-  font-size: 20px;
-  font-weight: 500;
-}
-
-#role {
-  font-size: 18px;
-  margin-bottom: 16px;
-  color:#555;
-}
+h2 { font-size:26px; margin-bottom:4px; }
+#username { font-size:20px; }
+#role { font-size:18px; color:#555; margin-bottom:16px; }
 
 button {
-  width: 100%;
-  padding: 18px;
-  font-size: 20px;
-  border-radius: 12px;
-  border: none;
-  cursor: pointer;
-  margin-bottom: 12px;
+  width:100%;
+  padding:18px;
+  font-size:20px;
+  border:none;
+  border-radius:14px;
+  margin-bottom:12px;
 }
 
-.primary {
+.big {
+  font-size:24px;
+  padding:26px;
   background:#0a7cff;
   color:#fff;
 }
 
-.secondary {
-  background:#e0e0e0;
-}
+.secondary { background:#e0e0e0; }
+.danger { background:#e53935; color:#fff; }
 
-.danger {
-  background:#e53935;
-  color:#fff;
-}
-
-input {
+input, select {
   width:100%;
   padding:16px;
   font-size:18px;
-  margin-bottom:10px;
+  margin-bottom:12px;
   border-radius:10px;
   border:1px solid #ccc;
 }
+
+.hidden { display:none; }
 </style>
 </head>
 
 <body>
 
-<h2>ระบบจองรถ หก-มน.</h2>
-<div id="username"></div>
-<div id="role"></div>
+<!-- HOME -->
+<div id="home">
+  <h2>ระบบจองรถ หก-มน.</h2>
+  <div id="username"></div>
+  <div id="role"></div>
 
-<button id="mainBtn" class="primary"></button>
-<button id="subBtn" class="secondary"></button>
+  <button class="big" onclick="openBooking()">จองรถพร้อมคนขับ</button>
+  <button id="subBtn" class="secondary"></button>
+  <div id="driverBox"></div>
+</div>
 
-<div id="driverBox"></div>
+<!-- BOOKING FORM -->
+<div id="booking" class="hidden">
+  <h2>จองรถพร้อมคนขับ</h2>
+
+  <input type="date" id="b_date">
+  <input type="time" id="b_time">
+
+  <select id="b_vehicle">
+    <option value="ไม่ระบุ">ไม่ระบุ</option>
+    <option value="รถเก๋ง">รถเก๋ง</option>
+    <option value="รถกระบะ">รถกระบะ</option>
+    <option value="รถตู้">รถตู้</option>
+  </select>
+
+  <input type="number" id="b_passenger" placeholder="จำนวนผู้โดยสาร">
+  <input type="text" id="b_pickup" placeholder="จุดรับ">
+  <input type="text" id="b_dropoff" placeholder="จุดส่ง">
+
+  <button class="big" onclick="submitBooking()">ยืนยันการจอง</button>
+  <button class="secondary" onclick="backHome()">กลับ</button>
+</div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbwEcTRjqPiXmaV9JefaXLYYTlf1IE8nYWTsdpU1dCT8bdmHBgEPCmDoszH9X04wVsOP/exec";
-let userRole = "user";
-let userId = "";
-let mobile = "";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbxmRM7q8m8AespLEkzMjUOPrFbJagv6O--FQSptr5L2SmaJLPEEE6QfK4TjVBkMlEmJJQ/exec";
+let userId="", role="", mobile="";
 
 async function init() {
-  await liff.init({ liffId: "2008934745-qU0fPztf" });
+  await liff.init({ liffId:"2008934745-qU0fPztf" });
   if (!liff.isLoggedIn()) liff.login();
 
-  const profile = await liff.getProfile();
-  userId = profile.userId;
+  const p = await liff.getProfile();
+  userId = p.userId;
+  document.getElementById("username").innerText = p.displayName;
 
-  document.getElementById("username").innerText = profile.displayName;
-
-  const res = await fetch(ENDPOINT, {
-    method: "POST",
-    body: JSON.stringify({
-      action: "auto_register",
-      line_user_id: userId,
-      display_name: profile.displayName
+  const r = await fetch(ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"auto_register",
+      line_user_id:userId,
+      display_name:p.displayName
     })
   }).then(r=>r.json());
 
-  userRole = res.role;
-  mobile = res.mobile || "";
+  role = r.role;
+  mobile = r.mobile || "";
 
-  render();
-}
-
-function render() {
   document.getElementById("role").innerText =
-    userRole === "driver"
-      ? "บทบาท: พนักงานขับรถ"
-      : "บทบาท: ผู้ใช้งานทั่วไป";
+    role === "driver" ? "บทบาท: พนักงานขับรถ" : "บทบาท: ผู้ใช้งานทั่วไป";
 
-  const mainBtn = document.getElementById("mainBtn");
-  const subBtn = document.getElementById("subBtn");
-  const box = document.getElementById("driverBox");
+  document.getElementById("subBtn").innerText =
+    role === "driver" ? "งานทั้งหมด" : "ดูประวัติการจอง";
 
-  box.innerHTML = "";
-
-  if (userRole === "user") {
-    /* ===== USER ===== */
-    mainBtn.innerText = "จองรถพร้อมคนขับ";
-    mainBtn.onclick = () => alert("ไปหน้าแบบฟอร์มจองรถ");
-
-    subBtn.innerText = "ดูประวัติการจอง";
-    subBtn.onclick = () => alert("แสดงประวัติการจอง");
-
-    box.innerHTML = `
-      <button class="secondary" onclick="showDriverRegister()">
-        ลงทะเบียนเป็นพนักงานขับรถ
-      </button>
+  if (role === "driver") {
+    document.getElementById("driverBox").innerHTML = `
+      <div>เบอร์โทร: ${mobile}</div>
+      <button class="danger" onclick="cancelDriver()">ยกเลิกสถานะพนักงานขับรถ</button>
     `;
   } else {
-    /* ===== DRIVER ===== */
-    mainBtn.innerText = "งานทั้งหมด";
-    mainBtn.onclick = () => alert("แสดงงานที่กำลังจะเกิดทั้งหมด");
-
-    subBtn.innerText = "ดูประวัติงาน (เดือนนี้)";
-    subBtn.onclick = () => alert("แสดงประวัติงานย้อนหลังของเดือนนี้");
-
-    box.innerHTML = `
-      <div style="margin-bottom:8px">
-        เบอร์โทรติดต่อ: <strong>${mobile}</strong>
-      </div>
-      <button class="danger" onclick="cancelDriver()">
-        ยกเลิกสถานะพนักงานขับรถ
-      </button>
+    document.getElementById("driverBox").innerHTML = `
+      <button class="secondary" onclick="registerDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>
     `;
   }
 }
 
-function showDriverRegister() {
-  const phone = prompt("กรุณากรอกเบอร์โทรสำหรับติดต่อ");
-  if (!phone) return;
-
-  registerDriver(phone);
+function openBooking() {
+  home.classList.add("hidden");
+  booking.classList.remove("hidden");
 }
 
-async function registerDriver(phone) {
-  const res = await fetch(ENDPOINT, {
+function backHome() {
+  booking.classList.add("hidden");
+  home.classList.remove("hidden");
+}
+
+async function submitBooking() {
+  await fetch(ENDPOINT,{
     method:"POST",
-    body: JSON.stringify({
+    body:JSON.stringify({
+      action:"create_booking",
+      line_user_id:userId,
+      booking_date:b_date.value,
+      booking_time:b_time.value,
+      vehicle_type:b_vehicle.value,
+      passenger_count:b_passenger.value,
+      pickup_location:b_pickup.value,
+      dropoff_location:b_dropoff.value
+    })
+  });
+  alert("ส่งคำขอเรียบร้อย กำลังหาพนักงานขับรถ");
+  backHome();
+}
+
+async function registerDriver() {
+  const phone = prompt("กรอกเบอร์โทร");
+  if (!phone) return;
+  await fetch(ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
       action:"register_driver",
       line_user_id:userId,
       mobile_phone:phone
     })
-  }).then(r=>r.json());
-
-  if (res.success) location.reload();
+  });
+  location.reload();
 }
 
 async function cancelDriver() {
-  if (!confirm("ยืนยันยกเลิกสถานะพนักงานขับรถ?")) return;
-
-  const res = await fetch(ENDPOINT, {
+  if (!confirm("ยกเลิกสถานะพนักงานขับรถ?")) return;
+  await fetch(ENDPOINT,{
     method:"POST",
-    body: JSON.stringify({
+    body:JSON.stringify({
       action:"cancel_driver",
       line_user_id:userId
     })
-  }).then(r=>r.json());
-
-  if (res.success) location.reload();
+  });
+  location.reload();
 }
 
 init();
