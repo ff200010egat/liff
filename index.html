@@ -37,7 +37,7 @@
     .profile {
       text-align: center;
       font-size: 1.2rem;
-      margin-bottom: 12px;
+      margin-bottom: 6px;
     }
 
     .role {
@@ -66,9 +66,14 @@
       color: #fff;
     }
 
-    .btn-book {
+    .btn-main {
       background: #00b900;
       color: #fff;
+    }
+
+    .btn-sub {
+      background: #e0e0e0;
+      color: #333;
     }
 
     .version {
@@ -96,11 +101,11 @@
     <div class="profile" id="profile">กำลังโหลด...</div>
     <div class="role" id="role"></div>
 
+    <!-- toggle driver -->
     <button id="toggleBtn" onclick="toggleDriver()"></button>
 
-    <button class="btn-book" onclick="alert('ขั้นต่อไปจะทำระบบจองรถ')">
-      🚗 จองรถ
-    </button>
+    <!-- dynamic menu -->
+    <div id="menuArea"></div>
   </div>
 
   <pre id="log"></pre>
@@ -111,16 +116,16 @@
 /* ===== CONFIG ===== */
 const LIFF_ID = "2008934745-qU0fPztf";
 const GAS_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbypkN_bZ4MOZ9HwXNaQGaZ4SexwRKAclaSr-NA1LZfrwj-X57cbDCkdUd_BFir8kkY3iQ/exec";
+  "https://script.google.com/macros/s/AKfycbwW2fE-_zSUp-RcbO2XWLE0ZBgtBOpl8ZWcitacFQaO1HvtW_8CY0Xrl6q0eeKeuOUcSA/exec";
+
+/* ===== STATE ===== */
+let currentRole = "user";
 
 /* ===== UTIL ===== */
 function log(msg) {
   document.getElementById("log").textContent += msg + "\n";
   console.log(msg);
 }
-
-/* ===== STATE ===== */
-let currentRole = "user";
 
 /* ===== INIT ===== */
 async function initLiff() {
@@ -162,13 +167,15 @@ async function autoRegister(profile) {
   const data = await res.json();
   currentRole = data.role;
 
-  renderRole();
+  render();
 }
 
 /* ===== TOGGLE DRIVER ===== */
 async function toggleDriver() {
   const action =
-    currentRole === "driver" ? "cancel_driver" : "become_driver";
+    currentRole === "driver"
+      ? "cancel_driver"
+      : "become_driver";
 
   const profile = await liff.getProfile();
 
@@ -186,24 +193,51 @@ async function toggleDriver() {
   const data = await res.json();
   currentRole = data.role;
 
-  renderRole();
   alert("อัปเดตสถานะเรียบร้อย");
+  render();
 }
 
-/* ===== RENDER ===== */
-function renderRole() {
+/* ===== RENDER UI ===== */
+function render() {
   const roleEl = document.getElementById("role");
   const btn = document.getElementById("toggleBtn");
+  const menu = document.getElementById("menuArea");
 
   roleEl.innerText =
-    "สถานะ: " + (currentRole === "driver" ? "พนักงานขับรถ" : "ผู้ใช้งานทั่วไป");
+    "สถานะ: " +
+    (currentRole === "driver"
+      ? "พนักงานขับรถ"
+      : "ผู้ใช้งานทั่วไป");
 
+  // toggle button
   if (currentRole === "driver") {
-    btn.innerText = "❌ ยกเลิกเป็นพนักงานขับรถ";
+    btn.innerText = "❌ ยกเลิกการเป็นพนักงานขับรถ";
     btn.className = "btn-cancel";
   } else {
-    btn.innerText = "🚘 สมัครเป็นพนักงานขับรถ";
+    btn.innerText = "🚘 ลงทะเบียนเป็นพนักงานขับรถ";
     btn.className = "btn-driver";
+  }
+
+  // menu buttons
+  menu.innerHTML = "";
+
+  if (currentRole === "user") {
+    menu.innerHTML += `
+      <button class="btn-main" onclick="alert('ขั้นต่อไปจะทำฟอร์มจองรถ')">
+        🚗 จองรถพร้อมคนขับ
+      </button>
+      <button class="btn-sub" onclick="alert('ขั้นต่อไปจะแสดงประวัติการจอง')">
+        📄 ดูประวัติ
+      </button>
+    `;
+  }
+
+  if (currentRole === "driver") {
+    menu.innerHTML += `
+      <button class="btn-main" onclick="alert('ขั้นต่อไปจะแสดงงานทั้งหมด')">
+        🧾 งานทั้งหมด
+      </button>
+    `;
   }
 }
 
