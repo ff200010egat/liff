@@ -1,206 +1,135 @@
 <!DOCTYPE html>
-<html lang="th">
+<html>
 <head>
 <meta charset="utf-8">
-<title>ระบบจองรถ หก-มน.</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <style>
 body {
-  font-family: system-ui, -apple-system;
-  background: #f2f4f7;
-  margin: 0;
-}
-.container {
-  max-width: 480px;
-  margin: auto;
+  font-family: system-ui, sans-serif;
   padding: 16px;
 }
+h2 { font-size: 24px; margin-bottom: 4px; }
+.role { font-size: 18px; margin-bottom: 16px; }
 
-/* HEADER */
-.header {
-  background: white;
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-.system-name {
-  font-size: 1.4rem;
-  font-weight: 700;
-}
-.user-name {
-  margin-top: 6px;
-  font-size: 1.1rem;
-}
-.user-role {
-  margin-top: 4px;
-  color: #555;
-}
-
-/* BUTTONS */
 button {
   width: 100%;
+  padding: 16px;
+  font-size: 20px;
+  margin-bottom: 12px;
+  border-radius: 10px;
   border: none;
-  border-radius: 14px;
-  font-size: 1.1rem;
-  padding: 16px;
-  margin-top: 12px;
+  cursor: pointer;
 }
-.primary {
-  background: #00b900;
-  color: white;
-  font-size: 1.3rem;
-  padding: 22px;
-}
-.secondary {
-  background: white;
-  border: 1px solid #ccc;
-}
-
-/* CARD */
-.card {
-  background: white;
-  padding: 16px;
-  border-radius: 16px;
-  margin-top: 16px;
-}
+.primary { background:#0a7cff; color:#fff; }
+.danger { background:#e53935; color:#fff; }
+.secondary { background:#eee; }
 
 input {
-  width: 100%;
-  padding: 14px;
-  font-size: 1rem;
-  margin-top: 8px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-}
-
-.version {
-  text-align: center;
-  font-size: 0.75rem;
-  color: #888;
-  margin-top: 16px;
+  width:100%;
+  padding:14px;
+  font-size:18px;
+  margin-bottom:10px;
 }
 </style>
 </head>
 
 <body>
-<div class="container">
 
-  <!-- HEADER -->
-  <div class="header">
-    <div class="system-name">🚗 ระบบจองรถ หก-มน.</div>
-    <div class="user-name" id="userName">กำลังโหลด...</div>
-    <div class="user-role" id="userRole"></div>
-  </div>
+<h2>ระบบจองรถ หก-มน.</h2>
+<div id="username"></div>
+<div class="role" id="role"></div>
 
-  <!-- MAIN ACTION -->
-  <button class="primary">จองรถพร้อมคนขับ</button>
-  <button class="secondary">ดูประวัติการจอง</button>
+<button class="primary">จองรถพร้อมคนขับ</button>
 
-  <!-- DRIVER SECTION -->
-  <div class="card" id="driverSection">กำลังโหลด...</div>
-
-  <div class="version" id="version"></div>
-</div>
+<div id="driverBox"></div>
 
 <script>
-/* ================= CONFIG ================= */
-const LIFF_ID = "2008934745-qU0fPztf";
-const GAS_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbxrDCo76Wgz7CV2Vp_7_RUD0lQOW_NgaxdRdgpvB6Bfes2Lt_xSMEbLKOS_ZcXQltGtBA/exec";
-
-/* ================= STATE ================= */
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbwEcTRjqPiXmaV9JefaXLYYTlf1IE8nYWTsdpU1dCT8bdmHBgEPCmDoszH9X04wVsOP/exec";
+let userRole = "user";
 let userId = "";
-let displayName = "";
-let role = "";
 let mobile = "";
 
-/* ================= INIT ================= */
 async function init() {
-  await liff.init({ liffId: LIFF_ID });
+  await liff.init({ liffId: "2008934745-qU0fPztf" });
 
-  if (!liff.isLoggedIn()) {
-    liff.login();
-    return;
-  }
+  if (!liff.isLoggedIn()) liff.login();
 
   const profile = await liff.getProfile();
   userId = profile.userId;
-  displayName = profile.displayName;
 
-  document.getElementById("userName").innerText = "👤 " + displayName;
+  document.getElementById("username").innerText = profile.displayName;
 
-  const res = await fetch(GAS_ENDPOINT, {
+  const res = await fetch(ENDPOINT, {
     method: "POST",
-    headers: { "Content-Type": "text/plain" },
     body: JSON.stringify({
       action: "auto_register",
       line_user_id: userId,
-      display_name: displayName
+      display_name: profile.displayName
     })
-  });
+  }).then(r=>r.json());
 
-  const data = await res.json();
-  role = data.role;
-  mobile = data.mobile;
+  userRole = res.role;
+  mobile = res.mobile || "";
 
-  document.getElementById("userRole").innerText =
-    role === "driver" ? "🧑‍✈️ พนักงานขับรถ" : "👥 ผู้ใช้งานทั่วไป";
-
-  renderDriverUI();
+  render();
 }
 
-/* ================= UI ================= */
-function renderDriverUI() {
-  const el = document.getElementById("driverSection");
+function render() {
+  document.getElementById("role").innerText =
+    userRole === "driver" ? "พนักงานขับรถ" : "ผู้ใช้งานทั่วไป";
 
-  if (role !== "driver") {
-    el.innerHTML = `
-      <button onclick="registerDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>
+  const box = document.getElementById("driverBox");
+  box.innerHTML = "";
+
+  if (userRole === "user") {
+    box.innerHTML = `
+      <input id="phone" placeholder="เบอร์มือถือสำหรับติดต่อ" value="${mobile}">
+      <button class="secondary" onclick="registerDriver()">
+        ลงทะเบียนเป็นพนักงานขับรถ
+      </button>
     `;
   } else {
-    el.innerHTML = `
-      <div>📞 เบอร์โทรติดต่อ: <strong>${mobile}</strong></div>
-      <button onclick="registerDriver()">แก้ไขเบอร์โทร</button>
+    box.innerHTML = `
+      <div>เบอร์โทร: ${mobile}</div>
+      <button class="danger" onclick="cancelDriver()">
+        ยกเลิกสถานะพนักงานขับรถ
+      </button>
     `;
   }
 }
 
-/* ================= ACTION ================= */
 async function registerDriver() {
-  const phone = prompt("กรุณากรอกเบอร์มือถือ (จำเป็น)");
-  if (!phone) {
-    alert("ต้องกรอกเบอร์มือถือก่อน");
-    return;
-  }
+  const phone = document.getElementById("phone").value.trim();
+  if (!phone) return alert("กรุณากรอกเบอร์โทร");
 
-  const res = await fetch(GAS_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain" },
+  const res = await fetch(ENDPOINT, {
+    method:"POST",
     body: JSON.stringify({
-      action: "register_driver",
-      line_user_id: userId,
-      mobile_phone: phone
+      action:"register_driver",
+      line_user_id:userId,
+      mobile_phone:phone
     })
-  });
+  }).then(r=>r.json());
 
-  const data = await res.json();
-
-  if (data.success) {
-    alert("บันทึกข้อมูลเรียบร้อย");
-    location.reload();
-  } else {
-    alert("ไม่สามารถบันทึกข้อมูลได้");
-  }
+  if (res.success) location.reload();
 }
 
-/* ================= VERSION ================= */
-document.getElementById("version").innerText =
-  "Build: " + new Date().toLocaleString();
+async function cancelDriver() {
+  if (!confirm("ยืนยันยกเลิกสถานะพนักงานขับรถ?")) return;
 
-/* ================= START ================= */
+  const res = await fetch(ENDPOINT, {
+    method:"POST",
+    body: JSON.stringify({
+      action:"cancel_driver",
+      line_user_id:userId
+    })
+  }).then(r=>r.json());
+
+  if (res.success) location.reload();
+}
+
 init();
 </script>
 </body>
