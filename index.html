@@ -14,16 +14,17 @@ button,input{width:100%;padding:12px;margin-top:6px;font-size:16px}
 </head>
 <body>
 
-<h2>🚗 ระบบจองรถ หก-มน.</h2>
+<h2>🚗 ระบบจองรถ</h2>
 
 <div class="card">
-  <b id="name"></b>
+  <b id="name"></b><br>
+  <span id="role"></span>
 </div>
 
 <div class="card">
-  <button onclick="showBooking()">จองรถพร้อมคนขับ</button>
-  <button onclick="loadHistory()">ดูประวัติการจอง</button>
-  <button onclick="toggleDriver()">ลงทะเบียนเป็นคนขับ</button>
+  <button id="bookBtn" onclick="showBooking()">จองรถพร้อมคนขับ</button>
+  <button id="historyBtn" onclick="loadMyBookings()">ประวัติการจอง</button>
+  <button id="driverBtn" onclick="registerAsDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>
 </div>
 
 <div id="booking" class="card hidden">
@@ -38,22 +39,39 @@ button,input{width:100%;padding:12px;margin-top:6px;font-size:16px}
 <div id="list" class="card hidden"></div>
 
 <script>
-const GAS = "https://script.google.com/macros/s/AKfycbyYqI1gYIowzYgcNhMouYZJ7zVpZEhoZIkatLHC82r87MG9q10eCxXx2TIIDxyNVvI2ng/exec";
-let profile={};
+const GAS = "https://script.google.com/macros/s/AKfycbyf8dXphL_lkFgqm2RGuWFEsRDgRX50gSzG_fkqjA_Ze4rm6F_2nyMT2lTki_tn3308BQ/exec";
+let profile = {};
+let roleValue = 'user';
 
 async function init(){
   await liff.init({liffId:"2008934745-qU0fPztf"});
   if(!liff.isLoggedIn()) liff.login();
 
   profile = await liff.getProfile();
-  name.innerText = profile.displayName;
 
-  await post('auto_register',{
-    line_user_id:profile.userId,
-    display_name:profile.displayName
+  const r = await post('auto_register',{
+    line_user_id: profile.userId,
+    display_name: profile.displayName
   });
+
+  name.innerText = r.data.display_name;
+  roleValue = r.data.role;
+
+  applyRoleUI();
 }
 init();
+
+function applyRoleUI(){
+  if(roleValue === 'driver'){
+    role.innerText = '🚗 พนักงานขับรถ';
+    driverBtn.classList.add('hidden');
+    historyBtn.innerText = 'งานที่ได้รับ';
+  }else{
+    role.innerText = '👤 ผู้ใช้งาน';
+    driverBtn.classList.remove('hidden');
+    historyBtn.innerText = 'ประวัติการจอง';
+  }
+}
 
 function post(action,data){
   return fetch(GAS,{
@@ -67,40 +85,56 @@ function showBooking(){
 }
 
 async function submitBooking(){
-  const res = await post('create_booking',{
-    line_user_id:profile.userId,
-    booking_date:date.value,
-    booking_time:time.value,
-    pickup_location:pickup.value,
-    dropoff_location:dropoff.value,
-    contact_mobile:mobile.value
+  const r = await post('create_booking',{
+    line_user_id: profile.userId,
+    booking_date: date.value,
+    booking_time: time.value,
+    pickup_location: pickup.value,
+    dropoff_location: dropoff.value,
+    contact_mobile: mobile.value
   });
 
-  if(res.success){
+  if(r.success){
     alert('✅ จองสำเร็จ');
     booking.classList.add('hidden');
   }else{
-    alert('❌ '+res.data);
+    alert('❌ '+r.data);
   }
 }
 
-async function loadHistory(){
-  const r = await post('get_my_bookings',{line_user_id:profile.userId});
-  list.innerHTML = r.data.map(b =>
-    `📅 ${b[2]} ${b[3]}<br>${b[6]} → ${b[7]}`
-  ).join('<hr>');
+async function loadMyBookings(){
   list.classList.remove('hidden');
+  list.innerHTML = 'กำลังโหลด...';
+
+  if(roleValue === 'driver'){
+    const r = await post('get_driver_jobs',{});
+    list.innerHTML = r.data.map(b =>
+      `📅 ${b[2]} ${b[3]}<br>${b[6]} → ${b[7]}`
+    ).join('<hr>');
+  }else{
+    const r = await post('get_my_bookings',{line_user_id:profile.userId});
+    list.innerHTML = r.data.map(b =>
+      `📅 ${b[2]} ${b[3]}<br>${b[6]} → ${b[7]}`
+    ).join('<hr>');
+  }
 }
 
-async function toggleDriver(){
-  const phone = prompt('เบอร์โทร');
+async function registerAsDriver(){
+  const phone = prompt('กรอกเบอร์โทร');
   if(!phone) return;
-  await post('register_driver',{
-    line_user_id:profile.userId,
-    mobile_phone:phone
+
+  const r = await post('register_driver',{
+    line_user_id: profile.userId,
+    mobile_phone: phone
   });
-  alert('ลงทะเบียนคนขับแล้ว');
+
+  if(r.success){
+    roleValue = 'driver';
+    applyRoleUI();
+    alert('ลงทะเบียนพนักงานขับรถแล้ว');
+  }
 }
 </script>
+
 </body>
 </html>
