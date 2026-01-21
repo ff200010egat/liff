@@ -1,134 +1,100 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="utf-8">
-  <title>Vehicle Booking</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<title>ระบบจองรถ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<!-- LIFF SDK -->
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-  <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont;
-      background: #f4f6f9;
-      margin: 0;
-      padding: 0;
-    }
-
-    .container {
-      max-width: 480px;
-      margin: auto;
-      padding: 20px;
-    }
-
-    h1 {
-      text-align: center;
-      font-size: 1.6rem;
-    }
-
-    .card {
-      background: #fff;
-      border-radius: 16px;
-      padding: 20px;
-      margin-top: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,.08);
-    }
-
-    .profile {
-      text-align: center;
-      font-size: 1.2rem;
-      margin-bottom: 6px;
-    }
-
-    .role {
-      text-align: center;
-      font-weight: bold;
-      margin-bottom: 16px;
-    }
-
-    button {
-      width: 100%;
-      padding: 16px;
-      font-size: 1.1rem;
-      border-radius: 12px;
-      border: none;
-      margin-top: 10px;
-      cursor: pointer;
-    }
-
-    .btn-driver {
-      background: #005bea;
-      color: #fff;
-    }
-
-    .btn-cancel {
-      background: #ff5252;
-      color: #fff;
-    }
-
-    .btn-main {
-      background: #00b900;
-      color: #fff;
-    }
-
-    .btn-sub {
-      background: #e0e0e0;
-      color: #333;
-    }
-
-    .version {
-      text-align: center;
-      font-size: .8rem;
-      color: #999;
-      margin-top: 20px;
-    }
-
-    pre {
-      font-size: .75rem;
-      background: #eee;
-      padding: 10px;
-      margin-top: 10px;
-    }
-  </style>
+<style>
+body {
+  font-family: system-ui, -apple-system;
+  background: #f2f4f7;
+  margin: 0;
+}
+.container {
+  max-width: 480px;
+  margin: auto;
+  padding: 16px;
+}
+button {
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  font-size: 1.1rem;
+  padding: 16px;
+  margin-top: 12px;
+}
+.primary {
+  background: #00b900;
+  color: white;
+  font-size: 1.3rem;
+  padding: 22px;
+}
+.secondary {
+  background: white;
+  border: 1px solid #ccc;
+}
+.card {
+  background: white;
+  padding: 16px;
+  border-radius: 16px;
+  margin-top: 16px;
+}
+.label {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+input {
+  width: 100%;
+  padding: 14px;
+  font-size: 1rem;
+  margin-top: 8px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
+.version {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #888;
+  margin-top: 16px;
+}
+</style>
 </head>
 
 <body>
-
 <div class="container">
-  <h1>ระบบจองรถ</h1>
 
-  <div class="card">
-    <div class="profile" id="profile">กำลังโหลด...</div>
-    <div class="role" id="role"></div>
+  <!-- MAIN ACTION -->
+  <button class="primary">🚗 จองรถพร้อมคนขับ</button>
+  <button class="secondary">📜 ดูประวัติการจอง</button>
 
-    <!-- toggle driver -->
-    <button id="toggleBtn" onclick="toggleDriver()"></button>
-
-    <!-- dynamic menu -->
-    <div id="menuArea"></div>
+  <!-- DRIVER SECTION -->
+  <div class="card" id="driverSection">
+    กำลังโหลด...
   </div>
 
-  <pre id="log"></pre>
   <div class="version" id="version"></div>
 </div>
 
 <script>
-/* ===== CONFIG ===== */
+/* ================= CONFIG ================= */
 const LIFF_ID = "2008934745-qU0fPztf";
+
+/* 🔴 เปลี่ยนเป็น GAS Web App URL ของคุณ */
 const GAS_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbwW2fE-_zSUp-RcbO2XWLE0ZBgtBOpl8ZWcitacFQaO1HvtW_8CY0Xrl6q0eeKeuOUcSA/exec";
+  "https://script.google.com/macros/s/AKfycbwZC-cgly5KdUEXn9JdLlp5WU1kGn91WY9tOPRnhIICTMqTaFmf-pNCfcnDr_i8DM8SWA/exec";
 
-/* ===== STATE ===== */
-let currentRole = "user";
+/* ================= STATE ================= */
+let userId = "";
+let displayName = "";
+let role = "";
+let mobile = "";
 
-/* ===== UTIL ===== */
-function log(msg) {
-  document.getElementById("log").textContent += msg + "\n";
-  console.log(msg);
-}
-
-/* ===== INIT ===== */
-async function initLiff() {
+/* ================= INIT ================= */
+async function init() {
   try {
     await liff.init({ liffId: LIFF_ID });
 
@@ -138,115 +104,82 @@ async function initLiff() {
     }
 
     const profile = await liff.getProfile();
-    document.getElementById("profile").innerText =
-      `สวัสดี ${profile.displayName}`;
+    userId = profile.userId;
+    displayName = profile.displayName;
 
-    await autoRegister(profile);
+    const res = await fetch(GAS_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({
+        action: "auto_register",
+        line_user_id: userId,
+        display_name: displayName
+      })
+    });
 
+    const data = await res.json();
+    role = data.role;
+    mobile = data.mobile;
+
+    renderDriverUI();
   } catch (err) {
-    alert("Session หมดอายุ กำลัง login ใหม่");
-    liff.logout();
-    liff.login();
+    alert("เกิดข้อผิดพลาดในการเริ่มต้นระบบ");
+    console.error(err);
   }
 }
 
-/* ===== AUTO REGISTER ===== */
-async function autoRegister(profile) {
-  const payload = {
-    action: "auto_register",
-    line_user_id: profile.userId,
-    display_name: profile.displayName
-  };
+/* ================= UI ================= */
+function renderDriverUI() {
+  const el = document.getElementById("driverSection");
 
-  const res = await fetch(GAS_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify(payload)
-  });
-
-  const data = await res.json();
-  currentRole = data.role;
-
-  render();
-}
-
-/* ===== TOGGLE DRIVER ===== */
-async function toggleDriver() {
-  const action =
-    currentRole === "driver"
-      ? "cancel_driver"
-      : "become_driver";
-
-  const profile = await liff.getProfile();
-
-  const payload = {
-    action: action,
-    line_user_id: profile.userId
-  };
-
-  const res = await fetch(GAS_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify(payload)
-  });
-
-  const data = await res.json();
-  currentRole = data.role;
-
-  alert("อัปเดตสถานะเรียบร้อย");
-  render();
-}
-
-/* ===== RENDER UI ===== */
-function render() {
-  const roleEl = document.getElementById("role");
-  const btn = document.getElementById("toggleBtn");
-  const menu = document.getElementById("menuArea");
-
-  roleEl.innerText =
-    "สถานะ: " +
-    (currentRole === "driver"
-      ? "พนักงานขับรถ"
-      : "ผู้ใช้งานทั่วไป");
-
-  // toggle button
-  if (currentRole === "driver") {
-    btn.innerText = "❌ ยกเลิกการเป็นพนักงานขับรถ";
-    btn.className = "btn-cancel";
+  if (role !== "driver") {
+    el.innerHTML = `
+      <div class="label">พนักงานขับรถ</div>
+      <button onclick="registerDriver()">🧑‍✈️ ลงทะเบียนเป็นพนักงานขับรถ</button>
+    `;
   } else {
-    btn.innerText = "🚘 ลงทะเบียนเป็นพนักงานขับรถ";
-    btn.className = "btn-driver";
-  }
-
-  // menu buttons
-  menu.innerHTML = "";
-
-  if (currentRole === "user") {
-    menu.innerHTML += `
-      <button class="btn-main" onclick="alert('ขั้นต่อไปจะทำฟอร์มจองรถ')">
-        🚗 จองรถพร้อมคนขับ
-      </button>
-      <button class="btn-sub" onclick="alert('ขั้นต่อไปจะแสดงประวัติการจอง')">
-        📄 ดูประวัติ
-      </button>
-    `;
-  }
-
-  if (currentRole === "driver") {
-    menu.innerHTML += `
-      <button class="btn-main" onclick="alert('ขั้นต่อไปจะแสดงงานทั้งหมด')">
-        🧾 งานทั้งหมด
-      </button>
+    el.innerHTML = `
+      <div class="label">📞 เบอร์โทรติดต่อ</div>
+      <div>${mobile}</div>
+      <button onclick="registerDriver()">✏️ แก้ไขเบอร์โทร</button>
     `;
   }
 }
 
-/* ===== VERSION ===== */
+/* ================= ACTION ================= */
+async function registerDriver() {
+  const phone = prompt("กรุณากรอกเบอร์มือถือ (จำเป็น)");
+  if (!phone) {
+    alert("ต้องกรอกเบอร์มือถือก่อน");
+    return;
+  }
+
+  const res = await fetch(GAS_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({
+      action: "register_driver",
+      line_user_id: userId,
+      mobile_phone: phone
+    })
+  });
+
+  const data = await res.json();
+
+  if (data.success) {
+    alert("บันทึกข้อมูลเรียบร้อย");
+    location.reload();
+  } else {
+    alert("ไม่สามารถบันทึกข้อมูลได้");
+  }
+}
+
+/* ================= VERSION ================= */
 document.getElementById("version").innerText =
-  "Version: " + new Date().toLocaleString();
+  "Build: " + new Date().toLocaleString();
 
-initLiff();
+/* ================= START ================= */
+init();
 </script>
-
 </body>
 </html>
