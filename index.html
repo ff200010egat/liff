@@ -8,14 +8,17 @@
 <body>
 
 <h2>LIFF Register User</h2>
+
 <button onclick="initLiff()">Init LIFF</button>
 <button onclick="registerUser()">Register User</button>
 
 <pre id="log"></pre>
 
 <script>
+/* ===== CONFIG ===== */
 const LIFF_ID = "2008934745-qU0fPztf";
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyrNta5RfTKA9LtrY9azs9UBo3UXg-Kc_-BCdbNIJA9S4T5kVmU0nNmqOOjQdSMd-7rYQ/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwy2Hpc_DTbnJmhOHW65F0rx-4tPJFkw21va9e92ZrjHaPGHeuqNXu8OuEZVfzVcgYNkg/exec";
+/* ================== */
 
 function log(msg) {
   document.getElementById("log").textContent += msg + "\n";
@@ -27,7 +30,7 @@ async function initLiff() {
     await liff.init({ liffId: LIFF_ID });
 
     if (!liff.isLoggedIn()) {
-      log("redirect to login");
+      log("not logged in → redirect");
       liff.login();
       return;
     }
@@ -42,18 +45,25 @@ async function registerUser() {
   try {
     const profile = await liff.getProfile();
 
-    log("userId = " + profile.userId);
+    log("userId: " + profile.userId);
+    log("name: " + profile.displayName);
 
-    await fetch(GAS_URL, {
+    const res = await fetch(GAS_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({
         line_user_id: profile.userId,
         display_name: profile.displayName
       })
     });
 
+    const text = await res.text();
+    log("response: " + text);
+
     alert("บันทึกผู้ใช้แล้ว");
+
   } catch (e) {
     log("register error: " + e);
   }
