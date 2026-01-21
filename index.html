@@ -94,14 +94,55 @@ function render() {
   document.getElementById("role").innerText =
     role === "driver" ? "บทบาท: พนักงานขับรถ" : "บทบาท: ผู้ใช้งานทั่วไป";
 
+  const driverBox = document.getElementById("driverBox");
+  driverBox.innerHTML = "";
+
   if (role === "user") {
+    /* ===== USER UI ===== */
     mainBtn.innerText = "จองรถพร้อมคนขับ";
     mainBtn.onclick = showForm;
+
     subBtn.innerText = "ดูประวัติการจอง";
+    subBtn.onclick = () => alert("TODO: ประวัติการจอง");
+
+    driverBox.innerHTML = `
+      <button class="secondary" onclick="showDriverRegister()">
+        ลงทะเบียนเป็นพนักงานขับรถ
+      </button>
+    `;
   } else {
+    /* ===== DRIVER UI ===== */
     mainBtn.innerText = "งานทั้งหมด";
-    subBtn.innerText = "ดูประวัติงาน";
+    mainBtn.onclick = () => alert("TODO: งานทั้งหมด");
+
+    subBtn.innerText = "ดูประวัติงาน (เดือนนี้)";
+    subBtn.onclick = () => alert("TODO: ประวัติงาน");
+
+    driverBox.innerHTML = `
+      <div style="margin-bottom:8px">
+        เบอร์โทรติดต่อ: <strong>${mobile}</strong>
+      </div>
+      <button class="danger" onclick="cancelDriver()">
+        ยกเลิกสถานะพนักงานขับรถ
+      </button>
+    `;
   }
+}
+
+function showDriverRegister() {
+  const phone = prompt("กรุณากรอกเบอร์โทรสำหรับติดต่อ");
+  if (!phone) return;
+
+  fetch(ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"register_driver",
+      line_user_id:userId,
+      mobile_phone:phone
+    })
+  }).then(r=>r.json()).then(res=>{
+    if(res.success) location.reload();
+  });
 }
 
 function showForm() {
@@ -114,21 +155,19 @@ function closeForm() {
 }
 
 async function submitBooking() {
-  const payload = {
-    action:"create_booking",
-    line_user_id:userId,
-    booking_date:booking_date.value,
-    booking_time:booking_time.value,
-    vehicle_type:vehicle_type.value,
-    passenger_count:passenger_count.value,
-    pickup_location:pickup_location.value,
-    dropoff_location:dropoff_location.value,
-    contact_mobile:contact_mobile.value
-  };
-
   const res = await fetch(ENDPOINT,{
     method:"POST",
-    body:JSON.stringify(payload)
+    body:JSON.stringify({
+      action:"create_booking",
+      line_user_id:userId,
+      booking_date:booking_date.value,
+      booking_time:booking_time.value,
+      vehicle_type:vehicle_type.value,
+      passenger_count:passenger_count.value,
+      pickup_location:pickup_location.value,
+      dropoff_location:dropoff_location.value,
+      contact_mobile:contact_mobile.value
+    })
   }).then(r=>r.json());
 
   if (res.success) {
@@ -137,6 +176,20 @@ async function submitBooking() {
   } else {
     alert("เกิดข้อผิดพลาด");
   }
+}
+
+async function cancelDriver() {
+  if (!confirm("ยืนยันยกเลิกสถานะพนักงานขับรถ?")) return;
+
+  const res = await fetch(ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"cancel_driver",
+      line_user_id:userId
+    })
+  }).then(r=>r.json());
+
+  if (res.success) location.reload();
 }
 
 init();
