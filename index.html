@@ -2,10 +2,9 @@
 <html lang="th">
 <head>
 <meta charset="utf-8">
-<title>ระบบจองรถ</title>
+<title>ระบบจองรถ หก-มน.</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- LIFF SDK -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <style>
@@ -19,6 +18,28 @@ body {
   margin: auto;
   padding: 16px;
 }
+
+/* HEADER */
+.header {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.system-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+.user-name {
+  margin-top: 6px;
+  font-size: 1.1rem;
+}
+.user-role {
+  margin-top: 4px;
+  color: #555;
+}
+
+/* BUTTONS */
 button {
   width: 100%;
   border: none;
@@ -37,16 +58,15 @@ button {
   background: white;
   border: 1px solid #ccc;
 }
+
+/* CARD */
 .card {
   background: white;
   padding: 16px;
   border-radius: 16px;
   margin-top: 16px;
 }
-.label {
-  font-weight: 600;
-  margin-bottom: 6px;
-}
+
 input {
   width: 100%;
   padding: 14px;
@@ -55,6 +75,7 @@ input {
   border-radius: 10px;
   border: 1px solid #ccc;
 }
+
 .version {
   text-align: center;
   font-size: 0.75rem;
@@ -67,14 +88,19 @@ input {
 <body>
 <div class="container">
 
+  <!-- HEADER -->
+  <div class="header">
+    <div class="system-name">🚗 ระบบจองรถ หก-มน.</div>
+    <div class="user-name" id="userName">กำลังโหลด...</div>
+    <div class="user-role" id="userRole"></div>
+  </div>
+
   <!-- MAIN ACTION -->
-  <button class="primary">🚗 จองรถพร้อมคนขับ</button>
-  <button class="secondary">📜 ดูประวัติการจอง</button>
+  <button class="primary">จองรถพร้อมคนขับ</button>
+  <button class="secondary">ดูประวัติการจอง</button>
 
   <!-- DRIVER SECTION -->
-  <div class="card" id="driverSection">
-    กำลังโหลด...
-  </div>
+  <div class="card" id="driverSection">กำลังโหลด...</div>
 
   <div class="version" id="version"></div>
 </div>
@@ -82,10 +108,8 @@ input {
 <script>
 /* ================= CONFIG ================= */
 const LIFF_ID = "2008934745-qU0fPztf";
-
-/* 🔴 เปลี่ยนเป็น GAS Web App URL ของคุณ */
 const GAS_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbwZC-cgly5KdUEXn9JdLlp5WU1kGn91WY9tOPRnhIICTMqTaFmf-pNCfcnDr_i8DM8SWA/exec";
+  "https://script.google.com/macros/s/AKfycbxrDCo76Wgz7CV2Vp_7_RUD0lQOW_NgaxdRdgpvB6Bfes2Lt_xSMEbLKOS_ZcXQltGtBA/exec";
 
 /* ================= STATE ================= */
 let userId = "";
@@ -95,37 +119,37 @@ let mobile = "";
 
 /* ================= INIT ================= */
 async function init() {
-  try {
-    await liff.init({ liffId: LIFF_ID });
+  await liff.init({ liffId: LIFF_ID });
 
-    if (!liff.isLoggedIn()) {
-      liff.login();
-      return;
-    }
-
-    const profile = await liff.getProfile();
-    userId = profile.userId;
-    displayName = profile.displayName;
-
-    const res = await fetch(GAS_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({
-        action: "auto_register",
-        line_user_id: userId,
-        display_name: displayName
-      })
-    });
-
-    const data = await res.json();
-    role = data.role;
-    mobile = data.mobile;
-
-    renderDriverUI();
-  } catch (err) {
-    alert("เกิดข้อผิดพลาดในการเริ่มต้นระบบ");
-    console.error(err);
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
   }
+
+  const profile = await liff.getProfile();
+  userId = profile.userId;
+  displayName = profile.displayName;
+
+  document.getElementById("userName").innerText = "👤 " + displayName;
+
+  const res = await fetch(GAS_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({
+      action: "auto_register",
+      line_user_id: userId,
+      display_name: displayName
+    })
+  });
+
+  const data = await res.json();
+  role = data.role;
+  mobile = data.mobile;
+
+  document.getElementById("userRole").innerText =
+    role === "driver" ? "🧑‍✈️ พนักงานขับรถ" : "👥 ผู้ใช้งานทั่วไป";
+
+  renderDriverUI();
 }
 
 /* ================= UI ================= */
@@ -134,14 +158,12 @@ function renderDriverUI() {
 
   if (role !== "driver") {
     el.innerHTML = `
-      <div class="label">พนักงานขับรถ</div>
-      <button onclick="registerDriver()">🧑‍✈️ ลงทะเบียนเป็นพนักงานขับรถ</button>
+      <button onclick="registerDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>
     `;
   } else {
     el.innerHTML = `
-      <div class="label">📞 เบอร์โทรติดต่อ</div>
-      <div>${mobile}</div>
-      <button onclick="registerDriver()">✏️ แก้ไขเบอร์โทร</button>
+      <div>📞 เบอร์โทรติดต่อ: <strong>${mobile}</strong></div>
+      <button onclick="registerDriver()">แก้ไขเบอร์โทร</button>
     `;
   }
 }
