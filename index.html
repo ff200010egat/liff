@@ -12,7 +12,7 @@ body {
   padding:16px;
 }
 
-h2 { font-size:26px; margin-bottom:4px; }
+h2 { font-size:26px; margin-bottom:6px; }
 #username { font-size:20px; }
 #role { font-size:18px; color:#555; margin-bottom:16px; }
 
@@ -25,23 +25,16 @@ button {
   margin-bottom:12px;
 }
 
-.big {
-  font-size:24px;
-  padding:26px;
-  background:#0a7cff;
-  color:#fff;
-}
-
+.big { font-size:24px; padding:26px; background:#0a7cff; color:#fff; }
 .secondary { background:#e0e0e0; }
 .danger { background:#e53935; color:#fff; }
 
-input, select {
-  width:100%;
-  padding:16px;
-  font-size:18px;
+.card {
+  background:#fff;
+  padding:14px;
+  border-radius:12px;
   margin-bottom:12px;
-  border-radius:10px;
-  border:1px solid #ccc;
+  box-shadow:0 1px 4px rgba(0,0,0,.1);
 }
 
 .hidden { display:none; }
@@ -57,34 +50,19 @@ input, select {
   <div id="role"></div>
 
   <button class="big" onclick="openBooking()">จองรถพร้อมคนขับ</button>
-  <button id="subBtn" class="secondary"></button>
+  <button class="secondary" onclick="openHistory()">ดูประวัติการจอง</button>
   <div id="driverBox"></div>
 </div>
 
-<!-- BOOKING FORM -->
-<div id="booking" class="hidden">
-  <h2>จองรถพร้อมคนขับ</h2>
-
-  <input type="date" id="b_date">
-  <input type="time" id="b_time">
-
-  <select id="b_vehicle">
-    <option value="ไม่ระบุ">ไม่ระบุ</option>
-    <option value="รถเก๋ง">รถเก๋ง</option>
-    <option value="รถกระบะ">รถกระบะ</option>
-    <option value="รถตู้">รถตู้</option>
-  </select>
-
-  <input type="number" id="b_passenger" placeholder="จำนวนผู้โดยสาร">
-  <input type="text" id="b_pickup" placeholder="จุดรับ">
-  <input type="text" id="b_dropoff" placeholder="จุดส่ง">
-
-  <button class="big" onclick="submitBooking()">ยืนยันการจอง</button>
+<!-- HISTORY -->
+<div id="history" class="hidden">
+  <h2>ประวัติการจอง</h2>
+  <div id="historyList"></div>
   <button class="secondary" onclick="backHome()">กลับ</button>
 </div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbxmRM7q8m8AespLEkzMjUOPrFbJagv6O--FQSptr5L2SmaJLPEEE6QfK4TjVBkMlEmJJQ/exec";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbzhO1TQ7bvAf-0tIO75pHuYlNg4eIWeU9jTlDz4H-AJBHTSvC4mXH7diVrFrbnXAZ3StQ/exec";
 let userId="", role="", mobile="";
 
 async function init() {
@@ -93,7 +71,7 @@ async function init() {
 
   const p = await liff.getProfile();
   userId = p.userId;
-  document.getElementById("username").innerText = p.displayName;
+  username.innerText = p.displayName;
 
   const r = await fetch(ENDPOINT,{
     method:"POST",
@@ -107,76 +85,52 @@ async function init() {
   role = r.role;
   mobile = r.mobile || "";
 
-  document.getElementById("role").innerText =
-    role === "driver" ? "บทบาท: พนักงานขับรถ" : "บทบาท: ผู้ใช้งานทั่วไป";
-
-  document.getElementById("subBtn").innerText =
-    role === "driver" ? "งานทั้งหมด" : "ดูประวัติการจอง";
-
-  if (role === "driver") {
-    document.getElementById("driverBox").innerHTML = `
-      <div>เบอร์โทร: ${mobile}</div>
-      <button class="danger" onclick="cancelDriver()">ยกเลิกสถานะพนักงานขับรถ</button>
-    `;
-  } else {
-    document.getElementById("driverBox").innerHTML = `
-      <button class="secondary" onclick="registerDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>
-    `;
-  }
+  role === "driver"
+    ? roleLabel("พนักงานขับรถ")
+    : roleLabel("ผู้ใช้งานทั่วไป");
 }
 
-function openBooking() {
+function roleLabel(text){
+  role.innerText = "บทบาท: " + text;
+}
+
+function openBooking(){ alert("ใช้ฟอร์มจองเดิม"); }
+
+async function openHistory() {
   home.classList.add("hidden");
-  booking.classList.remove("hidden");
-}
+  history.classList.remove("hidden");
+  historyList.innerHTML = "กำลังโหลด...";
 
-function backHome() {
-  booking.classList.add("hidden");
-  home.classList.remove("hidden");
-}
-
-async function submitBooking() {
-  await fetch(ENDPOINT,{
+  const r = await fetch(ENDPOINT,{
     method:"POST",
     body:JSON.stringify({
-      action:"create_booking",
-      line_user_id:userId,
-      booking_date:b_date.value,
-      booking_time:b_time.value,
-      vehicle_type:b_vehicle.value,
-      passenger_count:b_passenger.value,
-      pickup_location:b_pickup.value,
-      dropoff_location:b_dropoff.value
-    })
-  });
-  alert("ส่งคำขอเรียบร้อย กำลังหาพนักงานขับรถ");
-  backHome();
-}
-
-async function registerDriver() {
-  const phone = prompt("กรอกเบอร์โทร");
-  if (!phone) return;
-  await fetch(ENDPOINT,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"register_driver",
-      line_user_id:userId,
-      mobile_phone:phone
-    })
-  });
-  location.reload();
-}
-
-async function cancelDriver() {
-  if (!confirm("ยกเลิกสถานะพนักงานขับรถ?")) return;
-  await fetch(ENDPOINT,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"cancel_driver",
+      action:"get_my_bookings",
       line_user_id:userId
     })
+  }).then(r=>r.json());
+
+  historyList.innerHTML = "";
+
+  if (!r.bookings.length) {
+    historyList.innerHTML = "<p>ยังไม่มีประวัติการจอง</p>";
+    return;
+  }
+
+  r.bookings.forEach(b=>{
+    historyList.innerHTML += `
+      <div class="card">
+        <strong>${b.date} ${b.time}</strong><br>
+        รถ: ${b.vehicle}<br>
+        ${b.pickup} → ${b.dropoff}<br>
+        สถานะ: ${b.status}
+      </div>
+    `;
   });
-  location.reload();
+}
+
+function backHome(){
+  history.classList.add("hidden");
+  home.classList.remove("hidden");
 }
 
 init();
