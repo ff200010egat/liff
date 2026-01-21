@@ -1,88 +1,115 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-  <meta charset="utf-8">
-  <title>LIFF User Register</title>
+  <meta charset="utf-8" />
+  <title>LIFF Register</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    button { padding: 10px; margin-top: 10px; }
+    pre { background: #f4f4f4; padding: 10px; }
+  </style>
 </head>
 <body>
 
-<h2>LIFF User Register</h2>
+<h2>LIFF Register</h2>
+<p id="version"></p>
 
-<div id="version"></div>
-<hr>
-
-<button onclick="initLiff()">Init LIFF</button>
 <button onclick="registerUser()">Register User</button>
+<button onclick="forceLogout()">Force Logout</button>
 
 <pre id="log"></pre>
 
 <script>
-/* ===== CONFIG ===== */
+/* ================= CONFIG ================= */
 const LIFF_ID = "2008934745-qU0fPztf";
-const GAS_URL = "https://script.google.com/macros/s/AKfycbywtqKQCTBVQx4Zlg7oDXAPChOi796vBm2yeld3L1sGU6ThdjKLYZ8ARKklc8D56-Bp3w/exec";
-/* ================== */
+const GAS_ENDPOINT =
+  "https://script.google.com/macros/s/AKfycbzlgw-ZHCEH9tMPjEY00u4etK-WkNhwMjXtYVRqLKbdEC2eFSQOKx-h7Q7BMMnM8sGCUQ/exec";
 
-/* ===== VERSION ===== */
-const VERSION = {
-  buildTime: new Date().toISOString(),
-  gas: GAS_URL.split("/").slice(-2).join("/")
-};
-
+/* version stamp */
 document.getElementById("version").innerText =
-  "Version: " + VERSION.buildTime +
-  "\nGAS: " + VERSION.gas;
-/* =================== */
+  "Version: " + new Date().toISOString();
 
+/* ================= LOG ================= */
 function log(msg) {
   document.getElementById("log").textContent += msg + "\n";
+  console.log(msg);
 }
 
+/* ================= INIT LIFF ================= */
 async function initLiff() {
   log("init liff...");
-  await liff.init({ liffId: LIFF_ID });
 
-  if (!liff.isLoggedIn()) {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    log("liff ready");
+
+    if (!liff.isLoggedIn()) {
+      log("not logged in → redirect login");
+      liff.login();
+      return;
+    }
+
+    const profile = await liff.getProfile();
+    log("userId: " + profile.userId);
+    log("name: " + profile.displayName);
+
+  } catch (err) {
+    console.error(err);
+    log("init error: " + err.message);
+
+    // 🔥 TOKEN REVOKED HANDLER
+    alert("Session หมดอายุ กำลัง login ใหม่");
+    liff.logout();
     liff.login();
-    return;
   }
-
-  log("liff ready");
 }
 
+/* ================= REGISTER ================= */
 async function registerUser() {
   try {
     const profile = await liff.getProfile();
-
-    log("userId: " + profile.userId);
-    log("name: " + profile.displayName);
-    log("POST → " + GAS_URL);
 
     const payload = {
       line_user_id: profile.userId,
       display_name: profile.displayName
     };
 
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", GAS_URL, true);
+    log("POST → " + GAS_ENDPOINT);
 
-    // ⭐ ห้ามใช้ application/json
-    xhr.setRequestHeader("Content-Type", "text/plain;charset=utf-8");
+    const res = await fetch(GAS_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(payload)
+    });
 
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4) {
-        log("GAS response status: " + xhr.status);
-        log("GAS response text: " + xhr.responseText);
-        alert("DONE");
-      }
-    };
+    log("GAS response status: " + res.status);
+    const text = await res.text();
+    log("GAS response text: " + text);
 
-    xhr.send(JSON.stringify(payload));
+    alert("Register success");
 
-  } catch (e) {
-    log("register error: " + e);
+  } catch (err) {
+    console.error(err);
+    log("register error: " + err.message);
+
+    // 🔥 TOKEN REVOKED HANDLER
+    if (err.message.includes("revoked")) {
+      alert("Session หมดอายุ กำลัง login ใหม่");
+      liff.logout();
+      liff.login();
+    }
   }
 }
+
+/* ================= FORCE LOGOUT ================= */
+function forceLogout() {
+  liff.logout();
+  alert("Logged out – เปิดใหม่เพื่อ allow อีกครั้ง");
+}
+
+/* ================= START ================= */
+initLiff();
 </script>
 
 </body>
