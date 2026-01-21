@@ -1,192 +1,90 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <title>ระบบจองรถ หก-มน.</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ระบบจองรถ หก-มน.</title>
 
-  <!-- LIFF SDK -->
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-  <style>
-    body {
-      margin: 0;
-      padding: 16px;
-      background: #f2f4f7;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    .card {
-      background: #fff;
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 16px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 24px;
-      text-align: center;
-    }
-
-    .center { text-align: center; }
-
-    .label {
-      font-size: 14px;
-      color: #666;
-      margin-top: 4px;
-    }
-
-    button {
-      width: 100%;
-      border: none;
-      border-radius: 14px;
-      padding: 14px;
-      font-size: 18px;
-      margin-top: 10px;
-      cursor: pointer;
-    }
-
-    .primary {
-      background: #007aff;
-      color: #fff;
-      font-size: 22px;
-      padding: 18px;
-    }
-
-    .secondary {
-      background: #e9ecef;
-      color: #000;
-    }
-
-    .danger {
-      background: #ff3b30;
-      color: #fff;
-    }
-
-    input, select {
-      width: 100%;
-      padding: 12px;
-      margin-top: 8px;
-      font-size: 16px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-    }
-
-    .hidden { display: none; }
-
-    .version {
-      text-align: center;
-      font-size: 12px;
-      color: #999;
-      margin-top: 20px;
-    }
-  </style>
+<style>
+body { font-family: sans-serif; background:#f2f4f7; padding:16px; }
+.card { background:#fff; padding:16px; border-radius:14px; margin-bottom:16px; }
+button { width:100%; padding:14px; font-size:18px; margin-top:10px; border-radius:12px; border:none; }
+.primary { background:#007aff; color:#fff; font-size:22px; }
+.secondary { background:#e9ecef; }
+.danger { background:#ff3b30; color:#fff; }
+.hidden { display:none; }
+input,select { width:100%; padding:12px; margin-top:8px; }
+</style>
 </head>
 
 <body>
 
-  <!-- HEADER -->
-  <div class="card center">
-    <h1>🚗 ระบบจองรถ หก-มน.</h1>
-    <div id="userName">-</div>
-    <div id="userRole" class="label">-</div>
-  </div>
+<div class="card">
+  <h2>🚗 ระบบจองรถ หก-มน.</h2>
+  <div id="userName"></div>
+  <div id="userRole"></div>
+</div>
 
-  <!-- MAIN ACTION -->
-  <div class="card">
-    <button id="mainBtn" class="primary" onclick="openMainAction()">
-      จองรถพร้อมคนขับ
-    </button>
+<div class="card">
+  <button id="mainBtn" class="primary" onclick="openMain()">จองรถพร้อมคนขับ</button>
+  <button id="historyBtn" class="secondary hidden">ดูประวัติการจอง</button>
+  <button id="jobsBtn" class="secondary hidden">งานทั้งหมด</button>
+</div>
 
-    <button id="historyBtn" class="secondary hidden" onclick="viewHistory()">
-      ดูประวัติการจอง
-    </button>
+<div class="card" id="driverRegisterCard">
+  <button class="secondary" onclick="showDriverRegister()">ลงทะเบียนเป็นพนักงานขับรถ</button>
+</div>
 
-    <button id="jobsBtn" class="secondary hidden" onclick="viewJobs()">
-      งานทั้งหมด
-    </button>
-  </div>
+<div class="card hidden" id="driverPanel">
+  <input id="driverPhone" placeholder="เบอร์มือถือพนักงานขับรถ" />
+  <button class="secondary" onclick="saveDriver()">บันทึกเบอร์</button>
+  <button class="danger" onclick="cancelDriver()">ยกเลิกสถานะพนักงานขับรถ</button>
+</div>
 
-  <!-- DRIVER REGISTER (USER ONLY) -->
-  <div class="card" id="driverRegisterCard">
-    <button class="secondary" onclick="showDriverRegister()">
-      ลงทะเบียนเป็นพนักงานขับรถ
-    </button>
-  </div>
-
-  <!-- DRIVER PANEL -->
-  <div class="card hidden" id="driverPanel">
-    <div class="label">เบอร์มือถือสำหรับติดต่อ</div>
-    <input id="driverPhone" placeholder="08xxxxxxxx" />
-    <button class="secondary" onclick="saveDriver()">
-      บันทึก / แก้ไขเบอร์โทร
-    </button>
-    <button class="danger" onclick="cancelDriver()">
-      ยกเลิกสถานะพนักงานขับรถ
-    </button>
-  </div>
-
-  <!-- BOOKING FORM -->
-  <div id="bookingForm" class="card hidden">
-    <h3>📋 ฟอร์มจองรถพร้อมคนขับ</h3>
-
-    <input type="date" id="bookingDate" />
-    <input type="time" id="bookingTime" />
-
-    <select id="vehicleType">
-      <option value="ไม่ระบุ">ไม่ระบุ</option>
-      <option value="รถเก๋ง">รถเก๋ง</option>
-      <option value="รถกระบะ">รถกระบะ</option>
-      <option value="รถตู้">รถตู้</option>
-    </select>
-
-    <input type="number" id="passengerCount" placeholder="จำนวนผู้โดยสาร" />
-    <input id="pickupLocation" placeholder="ต้นทาง / จุดรับ" />
-    <input id="dropoffLocation" placeholder="ปลายทาง / จุดส่ง" />
-    <input id="contactMobile" placeholder="เบอร์มือถือผู้ประสานงาน" />
-
-    <button class="primary" onclick="submitBooking()">ยืนยันการจอง</button>
-  </div>
-
-  <div class="version" id="version"></div>
+<div class="card hidden" id="bookingForm">
+  <h3>ฟอร์มจองรถ</h3>
+  <input type="date" id="bookingDate" />
+  <input type="time" id="bookingTime" />
+  <select id="vehicleType">
+    <option value="ไม่ระบุ">ไม่ระบุ</option>
+    <option>รถเก๋ง</option>
+    <option>รถกระบะ</option>
+    <option>รถตู้</option>
+  </select>
+  <input id="passengerCount" placeholder="จำนวนผู้โดยสาร" />
+  <input id="pickupLocation" placeholder="จุดรับ" />
+  <input id="dropoffLocation" placeholder="จุดส่ง" />
+  <input id="contactMobile" placeholder="เบอร์ติดต่อ" />
+  <button class="primary" onclick="submitBooking()">ยืนยันการจอง</button>
+</div>
 
 <script>
-/* ================= CONFIG ================= */
 const LIFF_ID = "2008934745-qU0fPztf";
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyEDe6tW_6Lro8AOer6aBIrkm-Aiex_TFpahEOV5fPN-zwS7Ord2TF1tHtAoDjPjS44JQ/exec";
-const BUILD_VERSION = new Date().toISOString();
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyWXRa1daZgWI0EzgMYPew6TLn87Nn9kUO1kZtRrQSBqsbqQU0PHsmihW94cmgHp34r9A/exec";
 
-/* ================= STATE ================= */
 let profile = {};
 let role = "user";
 
-/* ================= INIT ================= */
 async function init() {
   await liff.init({ liffId: LIFF_ID });
-
-  if (!liff.isLoggedIn()) {
-    liff.login();
-    return;
-  }
+  if (!liff.isLoggedIn()) { liff.login(); return; }
 
   profile = await liff.getProfile();
   document.getElementById("userName").innerText = profile.displayName;
 
-  await autoRegister();
-
-  document.getElementById("version").innerText =
-    "ver: " + BUILD_VERSION;
+  const r = await post("auto_register");
+  role = r.role;
+  render();
 }
 
 init();
 
-/* ================= API ================= */
-async function post(action, data = {}) {
+async function post(action, data={}) {
   const res = await fetch(GAS_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({
       action,
       line_user_id: profile.userId,
@@ -197,56 +95,40 @@ async function post(action, data = {}) {
   return res.json();
 }
 
-/* ================= LOGIC ================= */
-async function autoRegister() {
-  const r = await post("auto_register");
-  role = r.role;
-  renderRole();
-}
-
-function renderRole() {
+function render() {
   document.getElementById("userRole").innerText =
     role === "driver" ? "พนักงานขับรถ" : "ผู้ใช้งานทั่วไป";
 
-  document.getElementById("historyBtn").classList.toggle("hidden", role !== "user");
-  document.getElementById("jobsBtn").classList.toggle("hidden", role !== "driver");
+  historyBtn.classList.toggle("hidden", role !== "user");
+  jobsBtn.classList.toggle("hidden", role !== "driver");
+  driverRegisterCard.classList.toggle("hidden", role === "driver");
+  driverPanel.classList.toggle("hidden", role !== "driver");
 
-  document.getElementById("driverRegisterCard").classList.toggle("hidden", role === "driver");
-  document.getElementById("driverPanel").classList.toggle("hidden", role !== "driver");
-
-  document.getElementById("mainBtn").innerText =
-    role === "driver" ? "งานทั้งหมด" : "จองรถพร้อมคนขับ";
+  mainBtn.innerText = role === "driver" ? "งานทั้งหมด" : "จองรถพร้อมคนขับ";
 }
 
-function openMainAction() {
-  if (role === "driver") {
-    viewJobs();
-  } else {
-    document.getElementById("bookingForm").classList.toggle("hidden");
-  }
+function openMain() {
+  if (role === "user") bookingForm.classList.toggle("hidden");
 }
 
 function showDriverRegister() {
-  document.getElementById("driverPanel").classList.remove("hidden");
+  driverPanel.classList.remove("hidden");
 }
 
 async function saveDriver() {
-  const phone = document.getElementById("driverPhone").value;
-  await post("register_driver", { mobile_phone: phone });
+  await post("register_driver", { mobile_phone: driverPhone.value });
   role = "driver";
-  renderRole();
-  alert("ลงทะเบียนพนักงานขับรถเรียบร้อย");
+  render();
 }
 
 async function cancelDriver() {
   await post("cancel_driver");
   role = "user";
-  renderRole();
-  alert("ยกเลิกสถานะพนักงานขับรถแล้ว");
+  render();
 }
 
 async function submitBooking() {
-  const data = {
+  const r = await post("create_booking", {
     booking_date: bookingDate.value,
     booking_time: bookingTime.value,
     vehicle_type: vehicleType.value,
@@ -254,18 +136,9 @@ async function submitBooking() {
     pickup_location: pickupLocation.value,
     dropoff_location: dropoffLocation.value,
     contact_mobile: contactMobile.value
-  };
-  const r = await post("create_booking", data);
-  alert("จองสำเร็จ รหัส: " + r.booking_id);
-  document.getElementById("bookingForm").classList.add("hidden");
-}
-
-function viewHistory() {
-  alert("TODO: หน้าแสดงประวัติการจอง (user)");
-}
-
-function viewJobs() {
-  alert("TODO: หน้างานทั้งหมด (driver)");
+  });
+  alert("จองสำเร็จ รหัส " + r.booking_id);
+  bookingForm.classList.add("hidden");
 }
 </script>
 
