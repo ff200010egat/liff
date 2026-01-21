@@ -1,87 +1,156 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="utf-8" />
-  <title>LIFF Register</title>
+  <meta charset="utf-8">
+  <title>Vehicle Booking</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    button { padding: 10px; margin-top: 10px; width:100%; }
-    pre { background: #f4f4f4; padding: 10px; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.6rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    }
+
+    .profile {
+      text-align: center;
+      font-size: 1.2rem;
+      margin-bottom: 6px;
+    }
+
+    .role {
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      font-size: 1.1rem;
+      border-radius: 12px;
+      border: none;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+
+    .btn-driver {
+      background: #005bea;
+      color: #fff;
+    }
+
+    .btn-cancel {
+      background: #ff5252;
+      color: #fff;
+    }
+
+    .btn-main {
+      background: #00b900;
+      color: #fff;
+    }
+
+    .btn-sub {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .version {
+      text-align: center;
+      font-size: .8rem;
+      color: #999;
+      margin-top: 20px;
+    }
+
+    pre {
+      font-size: .75rem;
+      background: #eee;
+      padding: 10px;
+      margin-top: 10px;
+    }
   </style>
 </head>
+
 <body>
 
-<h2>🚗 ระบบจองรถ</h2>
-<p id="version"></p>
+<div class="container">
+  <h1>ระบบจองรถ</h1>
 
-<div>
-  <b id="name">-</b><br>
-  <span id="role">-</span>
+  <div class="card">
+    <div class="profile" id="profile">กำลังโหลด...</div>
+    <div class="role" id="role"></div>
+
+    <!-- toggle driver -->
+    <button id="toggleBtn" onclick="toggleDriver()"></button>
+
+    <!-- dynamic menu -->
+    <div id="menuArea"></div>
+  </div>
+
+  <pre id="log"></pre>
+  <div class="version" id="version"></div>
 </div>
 
-<button id="driverBtn" onclick="registerDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>
-
-<pre id="log"></pre>
-
 <script>
-/* ================= CONFIG ================= */
+/* ===== CONFIG ===== */
 const LIFF_ID = "2008934745-qU0fPztf";
 const GAS_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbzp3MIRbTf17lnZF0vjM9NcLW3REPl4V7StFO9ZFLLd86-TxFOjw_lrKNAi_Xj23Gpaag/exec";
+  "https://script.google.com/macros/s/AKfycbxa7hQDWOeMyY6Pgbv4xxDD8UuWLZIM73MHAY6pGyuipljEA_AMpVnb8ppEmIX7Fv6Mgw/exec";
 
-/* version stamp */
-document.getElementById("version").innerText =
-  "Version: " + new Date().toISOString();
+/* ===== STATE ===== */
+let currentRole = "user";
 
-/* ================= LOG ================= */
+/* ===== UTIL ===== */
 function log(msg) {
   document.getElementById("log").textContent += msg + "\n";
   console.log(msg);
 }
 
-/* ================= INIT LIFF ================= */
+/* ===== INIT ===== */
 async function initLiff() {
-  log("init liff...");
-
   try {
     await liff.init({ liffId: LIFF_ID });
-    log("liff ready");
 
     if (!liff.isLoggedIn()) {
-      log("not logged in → redirect login");
       liff.login();
       return;
     }
 
-    let profile;
-    try {
-      profile = await liff.getProfile();
-    } catch (e) {
-      // fallback สำหรับ Rich Menu
-      const token = liff.getDecodedIDToken();
-      profile = {
-        userId: token.sub,
-        displayName: token.name || "LINE User"
-      };
-    }
-
-    log("userId: " + profile.userId);
-    log("name: " + profile.displayName);
+    const profile = await liff.getProfile();
+    document.getElementById("profile").innerText =
+      `สวัสดี ${profile.displayName}`;
 
     await autoRegister(profile);
 
   } catch (err) {
-    console.error(err);
-    log("init error: " + err.message);
-
     alert("Session หมดอายุ กำลัง login ใหม่");
     liff.logout();
     liff.login();
   }
 }
 
-/* ================= AUTO REGISTER ================= */
+/* ===== AUTO REGISTER ===== */
 async function autoRegister(profile) {
   const payload = {
     action: "auto_register",
@@ -95,29 +164,24 @@ async function autoRegister(profile) {
     body: JSON.stringify(payload)
   });
 
-  const text = await res.text();
-  log("GAS response: " + text);
+  const data = await res.json();
+  currentRole = data.role;
 
-  const data = JSON.parse(text);
-
-  document.getElementById("name").innerText = data.display_name;
-  document.getElementById("role").innerText =
-    data.role === "driver" ? "🚗 พนักงานขับรถ" : "👤 ผู้ใช้งาน";
-
-  if (data.role === "driver") {
-    document.getElementById("driverBtn").style.display = "none";
-  }
+  render();
 }
 
-/* ================= REGISTER DRIVER ================= */
-async function registerDriver() {
-  const phone = prompt("กรอกเบอร์โทร");
-  if (!phone) return;
+/* ===== TOGGLE DRIVER ===== */
+async function toggleDriver() {
+  const action =
+    currentRole === "driver"
+      ? "cancel_driver"
+      : "become_driver";
+
+  const profile = await liff.getProfile();
 
   const payload = {
-    action: "register_driver",
-    line_user_id: (await liff.getProfile()).userId,
-    mobile_phone: phone
+    action: action,
+    line_user_id: profile.userId
   };
 
   const res = await fetch(GAS_ENDPOINT, {
@@ -126,20 +190,61 @@ async function registerDriver() {
     body: JSON.stringify(payload)
   });
 
-  const text = await res.text();
-  log("register_driver: " + text);
+  const data = await res.json();
+  currentRole = data.role;
 
-  alert("ลงทะเบียนพนักงานขับรถแล้ว");
-  location.reload();
+  alert("อัปเดตสถานะเรียบร้อย");
+  render();
 }
 
-/* ================= FORCE LOGOUT ================= */
-function forceLogout() {
-  liff.logout();
-  alert("Logged out – เปิดใหม่เพื่อ allow อีกครั้ง");
+/* ===== RENDER UI ===== */
+function render() {
+  const roleEl = document.getElementById("role");
+  const btn = document.getElementById("toggleBtn");
+  const menu = document.getElementById("menuArea");
+
+  roleEl.innerText =
+    "สถานะ: " +
+    (currentRole === "driver"
+      ? "พนักงานขับรถ"
+      : "ผู้ใช้งานทั่วไป");
+
+  // toggle button
+  if (currentRole === "driver") {
+    btn.innerText = "❌ ยกเลิกการเป็นพนักงานขับรถ";
+    btn.className = "btn-cancel";
+  } else {
+    btn.innerText = "🚘 ลงทะเบียนเป็นพนักงานขับรถ";
+    btn.className = "btn-driver";
+  }
+
+  // menu buttons
+  menu.innerHTML = "";
+
+  if (currentRole === "user") {
+    menu.innerHTML += `
+      <button class="btn-main" onclick="alert('ขั้นต่อไปจะทำฟอร์มจองรถ')">
+        🚗 จองรถพร้อมคนขับ
+      </button>
+      <button class="btn-sub" onclick="alert('ขั้นต่อไปจะแสดงประวัติการจอง')">
+        📄 ดูประวัติ
+      </button>
+    `;
+  }
+
+  if (currentRole === "driver") {
+    menu.innerHTML += `
+      <button class="btn-main" onclick="alert('ขั้นต่อไปจะแสดงงานทั้งหมด')">
+        🧾 งานทั้งหมด
+      </button>
+    `;
+  }
 }
 
-/* ================= START ================= */
+/* ===== VERSION ===== */
+document.getElementById("version").innerText =
+  "Version: " + new Date().toLocaleString();
+
 initLiff();
 </script>
 
