@@ -7,7 +7,10 @@
 </head>
 <body>
 
-<h2>LIFF Register User</h2>
+<h2>LIFF User Register</h2>
+
+<div id="version"></div>
+<hr>
 
 <button onclick="initLiff()">Init LIFF</button>
 <button onclick="registerUser()">Register User</button>
@@ -17,8 +20,25 @@
 <script>
 /* ===== CONFIG ===== */
 const LIFF_ID = "2008934745-qU0fPztf";
-const GAS_URL = "https://script.google.com/macros/s/AKfycbw13kHdXZeqS65kfDsKC0ZWIJpK9VRahVVhAQLRr78sseudAuAM27mZgDKOdbH8Aw2-eQ/exec";
+
+/**
+ * 🔴 ต้องเป็น /exec เท่านั้น
+ * ตัวอย่าง:
+ * https://script.google.com/macros/s/AKfycbxxxxxxx/exec
+ */
+const GAS_URL = "https://script.google.com/macros/s/AKfycby6zjOWBEqJ_yPcdug83BI9ivUvvYzVGbrvb6pUcboVsDYdx2z5SWWrV41sFZvXyEYqKQ/exec";
 /* ================== */
+
+/* ===== VERSION INFO ===== */
+const VERSION = {
+  buildTime: new Date().toISOString(),
+  gasSuffix: GAS_URL.split("/").slice(-2).join("/")
+};
+
+document.getElementById("version").innerText =
+  "Version: " + VERSION.buildTime +
+  "\nGAS: " + VERSION.gasSuffix;
+/* ======================== */
 
 function log(msg) {
   document.getElementById("log").textContent += msg + "\n";
@@ -30,7 +50,7 @@ async function initLiff() {
     await liff.init({ liffId: LIFF_ID });
 
     if (!liff.isLoggedIn()) {
-      log("redirect login");
+      log("not logged in → redirect");
       liff.login();
       return;
     }
@@ -47,20 +67,25 @@ async function registerUser() {
 
     log("userId: " + profile.userId);
     log("name: " + profile.displayName);
+    log("POST → " + GAS_URL);
 
-    await fetch(GAS_URL, {
-      method: "POST",
-      mode: "no-cors",          // ⭐ แก้ตรงนี้
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        line_user_id: profile.userId,
-        display_name: profile.displayName
-      })
-    });
+    // ⭐ ใช้ XMLHttpRequest แทน fetch (แก้ Failed to fetch 100%)
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", GAS_URL, true);
+    xhr.setRequestHeader("Content-Type", "application/json");
 
-    alert("บันทึกผู้ใช้แล้ว (ส่งข้อมูลสำเร็จ)");
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4) {
+        log("GAS response status: " + xhr.status);
+        log("GAS response text: " + xhr.responseText);
+        alert("ส่งข้อมูลเรียบร้อย (ดู log)");
+      }
+    };
+
+    xhr.send(JSON.stringify({
+      line_user_id: profile.userId,
+      display_name: profile.displayName
+    }));
 
   } catch (e) {
     log("register error: " + e);
