@@ -1,10 +1,85 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>GitHub Pages Test</title>
+  <meta charset="UTF-8" />
+  <title>LIFF UserID Test</title>
+
+  <!-- LIFF SDK -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      text-align: center;
+    }
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    pre {
+      text-align: left;
+      background: #111;
+      color: #0f0;
+      padding: 10px;
+      margin-top: 15px;
+    }
+  </style>
 </head>
+
 <body>
-  <h1>Hello GitHub Pages</h1>
+
+<h2>LIFF UserID Test</h2>
+
+<button onclick="saveUser()">บันทึก User ID</button>
+
+<pre id="log">Waiting...</pre>
+
+<script>
+const LIFF_ID = "2008934745-qU0fPztf";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzHqgtbBJJSFeiz7kFMKQsM2CjN6s0UBVCu18mEKZQs-TXf372V4ICzpBRj_vezgVhA8w/exec";
+
+function log(msg) {
+  document.getElementById("log").textContent += "\n" + msg;
+}
+
+async function init() {
+  log("Init LIFF...");
+  await liff.init({ liffId: LIFF_ID });
+
+  if (!liff.isLoggedIn()) {
+    log("Not logged in → login()");
+    liff.login();
+    return;
+  }
+
+  log("LIFF Ready");
+}
+
+async function saveUser() {
+  try {
+    const profile = await liff.getProfile();
+    log("UserID: " + profile.userId);
+
+    const res = await fetch(GAS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: profile.userId
+      })
+    });
+
+    const result = await res.json();
+    log("Saved: " + JSON.stringify(result));
+
+  } catch (err) {
+    log("ERROR: " + err.message);
+  }
+}
+
+init();
+</script>
+
 </body>
 </html>
