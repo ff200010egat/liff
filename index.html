@@ -3,38 +3,35 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ระบบจองรถ หก-มน.</title>
+<title>ระบบจองรถ</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
-body{font-family:sans-serif;background:#f5f5f5;padding:15px}
-h1{font-size:26px;text-align:center}
+body{font-family:sans-serif;background:#f4f4f4;padding:15px}
 .card{background:#fff;padding:15px;border-radius:10px;margin-bottom:10px}
-.big{font-size:20px;padding:18px;width:100%}
-button{padding:12px;width:100%;margin-top:8px;font-size:16px}
+button,input{width:100%;padding:12px;margin-top:6px;font-size:16px}
 .hidden{display:none}
 </style>
 </head>
 <body>
 
-<h1>🚗 ระบบจองรถ หก-มน.</h1>
+<h2>🚗 ระบบจองรถ หก-มน.</h2>
 
 <div class="card">
-  <b id="name"></b><br>
-  <span id="role"></span>
+  <b id="name"></b>
 </div>
 
 <div class="card">
-  <button class="big" onclick="showBooking()">จองรถพร้อมคนขับ</button>
-  <button id="historyBtn" onclick="loadHistory()">ดูประวัติการจอง</button>
-  <button id="driverBtn" onclick="toggleDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>
+  <button onclick="showBooking()">จองรถพร้อมคนขับ</button>
+  <button onclick="loadHistory()">ดูประวัติการจอง</button>
+  <button onclick="toggleDriver()">ลงทะเบียนเป็นคนขับ</button>
 </div>
 
 <div id="booking" class="card hidden">
-  <input id="date" type="date"><br>
-  <input id="time" type="time"><br>
-  <input id="pickup" placeholder="จุดรับ"><br>
-  <input id="dropoff" placeholder="จุดส่ง"><br>
-  <input id="mobile" placeholder="เบอร์ติดต่อ"><br>
+  <input id="date" type="date">
+  <input id="time" type="time">
+  <input id="pickup" placeholder="จุดรับ">
+  <input id="dropoff" placeholder="จุดส่ง">
+  <input id="mobile" placeholder="เบอร์ติดต่อ">
   <button onclick="submitBooking()">ยืนยันการจอง</button>
 </div>
 
@@ -42,53 +39,67 @@ button{padding:12px;width:100%;margin-top:8px;font-size:16px}
 
 <script>
 const GAS = "https://script.google.com/macros/s/AKfycbx3yWLg9H_fBHB7-lRIyWgo-OVXaJEwZZGFT0VDzR3VO10wl9kpWZuR53XPQT5T3m_RVA/exec";
-let profile = {};
+let profile={};
 
-async function init() {
-  await liff.init({ liffId: "2008934745-qU0fPztf" });
-  if (!liff.isLoggedIn()) liff.login();
+async function init(){
+  await liff.init({liffId:"2008934745-qU0fPztf"});
+  if(!liff.isLoggedIn()) liff.login();
 
   profile = await liff.getProfile();
-  document.getElementById("name").innerText = profile.displayName;
+  name.innerText = profile.displayName;
 
-  await post("auto_register",{line_user_id:profile.userId,display_name:profile.displayName});
+  await post('auto_register',{
+    line_user_id:profile.userId,
+    display_name:profile.displayName
+  });
 }
 init();
 
 function post(action,data){
   return fetch(GAS,{
-    method:"POST",
+    method:'POST',
     body:JSON.stringify({...data,action})
   }).then(r=>r.json());
 }
 
 function showBooking(){
-  document.getElementById("booking").classList.remove("hidden");
+  booking.classList.remove('hidden');
 }
 
-function submitBooking(){
-  post("create_booking",{
+async function submitBooking(){
+  const res = await post('create_booking',{
     line_user_id:profile.userId,
     booking_date:date.value,
     booking_time:time.value,
     pickup_location:pickup.value,
     dropoff_location:dropoff.value,
     contact_mobile:mobile.value
-  }).then(()=>alert("จองสำเร็จ"));
-}
-
-function loadHistory(){
-  post("get_my_bookings",{line_user_id:profile.userId})
-  .then(r=>{
-    list.innerHTML = r.data.map(b=>`📅 ${b[2]} ${b[3]} → ${b[6]}`).join("<hr>");
-    list.classList.remove("hidden");
   });
+
+  if(res.success){
+    alert('✅ จองสำเร็จ');
+    booking.classList.add('hidden');
+  }else{
+    alert('❌ '+res.data);
+  }
 }
 
-function toggleDriver(){
-  const phone = prompt("กรอกเบอร์โทร");
-  post("register_driver",{line_user_id:profile.userId,mobile_phone:phone})
-  .then(()=>alert("ลงทะเบียนคนขับแล้ว"));
+async function loadHistory(){
+  const r = await post('get_my_bookings',{line_user_id:profile.userId});
+  list.innerHTML = r.data.map(b =>
+    `📅 ${b[2]} ${b[3]}<br>${b[6]} → ${b[7]}`
+  ).join('<hr>');
+  list.classList.remove('hidden');
+}
+
+async function toggleDriver(){
+  const phone = prompt('เบอร์โทร');
+  if(!phone) return;
+  await post('register_driver',{
+    line_user_id:profile.userId,
+    mobile_phone:phone
+  });
+  alert('ลงทะเบียนคนขับแล้ว');
 }
 </script>
 </body>
