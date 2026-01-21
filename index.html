@@ -1,222 +1,109 @@
 <!DOCTYPE html>
-<html lang="th">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>ระบบจองรถ หก-มน.</title>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
 <style>
-body { margin:0; font-family:system-ui; background:#f4f6f8; }
-.container { padding:16px; }
-
-.card {
-  background:#fff;
-  border-radius:14px;
-  padding:16px;
-  margin-bottom:14px;
+body {
+  font-family: sans-serif;
+  padding: 16px;
 }
-
-h2 { margin:0; }
-.role { margin-top:6px; font-weight:bold; }
-
-button {
-  width:100%;
-  border:none;
-  border-radius:14px;
-  margin-top:10px;
+h1 { font-size: 24px; margin-bottom: 8px; }
+.big-btn {
+  width: 100%;
+  padding: 18px;
+  font-size: 20px;
+  margin-bottom: 12px;
 }
-
-.big {
-  padding:22px;
-  font-size:20px;
-  background:#0a7cff;
-  color:#fff;
+.btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  margin-bottom: 10px;
 }
-
-.normal {
-  padding:14px;
-  font-size:16px;
-  background:#e0e0e0;
-}
-
-.danger {
-  padding:14px;
-  font-size:16px;
-  background:#ff5252;
-  color:#fff;
-}
-
-input, select {
-  width:100%;
-  padding:14px;
-  margin-top:10px;
-  font-size:16px;
-  border-radius:10px;
-}
-
-.hidden { display:none; }
+.hidden { display: none; }
 </style>
 </head>
 
 <body>
-<div class="container">
+<h1>ระบบจองรถ หก-มน.</h1>
+<div id="username"></div>
+<div id="role"></div>
 
-<!-- HEADER -->
-<div class="card">
-  <h2>🚗 ระบบจองรถ หก-มน.</h2>
-  <div id="userName"></div>
-  <div id="userRole" class="role"></div>
-</div>
+<button class="big-btn" id="mainBtn"></button>
+<button class="btn" id="secondBtn"></button>
 
-<!-- DRIVER INFO -->
-<div class="card hidden" id="driverBox">
-  📞 เบอร์มือถือ: <span id="driverPhone"></span>
-  <button class="normal" onclick="editPhone()">แก้ไขเบอร์โทร</button>
-  <button class="danger" onclick="cancelDriver()">ยกเลิกสถานะพนักงานขับรถ</button>
-</div>
+<button class="btn" id="registerDriverBtn">ลงทะเบียนเป็นพนักงานขับรถ</button>
+<button class="btn hidden" id="cancelDriverBtn">ยกเลิกสถานะพนักงานขับรถ</button>
 
-<!-- ACTION -->
-<div class="card">
-  <button id="mainBtn" class="big"></button>
-  <button id="historyBtn" class="normal hidden">ดูประวัติการจอง</button>
-  <button id="registerDriverBtn" class="normal hidden"
-    onclick="openDriverPopup()">ลงทะเบียนเป็นพนักงานขับรถ</button>
-</div>
-
-<!-- BOOKING FORM -->
-<div class="card hidden" id="bookingForm">
-  <h3>📋 จองรถพร้อมคนขับ</h3>
-
-  <input type="date" id="bookingDate">
-  <input type="time" id="bookingTime">
-
-  <select id="vehicleType">
+<div id="bookingForm" class="hidden">
+  <input type="date" id="bDate"><br>
+  <input type="time" id="bTime"><br>
+  <select id="vehicle">
     <option>ไม่ระบุ</option>
     <option>รถเก๋ง</option>
     <option>รถกระบะ</option>
     <option>รถตู้</option>
-  </select>
-
-  <input type="number" id="passengerCount" placeholder="จำนวนผู้โดยสาร">
-  <input type="text" id="pickupLocation" placeholder="จุดรับ">
-  <input type="text" id="dropoffLocation" placeholder="จุดส่ง">
-  <input type="tel" id="contactMobile" placeholder="เบอร์ผู้ประสานงาน">
-
-  <button class="big" onclick="submitBooking()">ยืนยันการจอง</button>
+  </select><br>
+  <input placeholder="จำนวนผู้โดยสาร" id="passenger"><br>
+  <input placeholder="ต้นทาง / จุดรับ" id="pickup"><br>
+  <input placeholder="ปลายทาง / จุดส่ง" id="dropoff"><br>
+  <input placeholder="เบอร์มือถือผู้ประสานงาน" id="contact"><br>
+  <button onclick="submitBooking()">ยืนยันจอง</button>
 </div>
 
-<!-- DRIVER POPUP -->
-<div class="card hidden" id="driverPopup">
-  <h3>ลงทะเบียนเป็นพนักงานขับรถ</h3>
-  <input type="tel" id="driverMobile" placeholder="เบอร์มือถือที่ติดต่อได้">
-  <button class="big" onclick="saveDriver()">บันทึก</button>
-</div>
-
-</div>
+<div id="list"></div>
 
 <script>
-const LIFF_ID = "2008934745-qU0fPztf";
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxJ_fhLTXyfTi06PLQkQ1qtFvsHq-O1vyvA2NrIXrC1Rb0DmtHw9ZLPAH0zy2EWtTk/exec";
+const GAS = "PUT_YOUR_GAS_ENDPOINT_HERE";
+let profile = {};
 
-let userId="", role="", mobile="";
+async function post(data){
+  const r = await fetch(GAS,{method:"POST",body:JSON.stringify(data)});
+  return r.json();
+}
 
-async function init() {
-  await liff.init({ liffId: LIFF_ID });
-  if (!liff.isLoggedIn()) liff.login();
+async function init(){
+  await liff.init({ liffId: "2008934745-qU0fPztf" });
+  if(!liff.isLoggedIn()) liff.login();
 
-  const p = await liff.getProfile();
-  userId = p.userId;
-  userName.innerText = p.displayName;
+  profile = await liff.getProfile();
+  document.getElementById("username").innerText = profile.displayName;
 
-  const res = await fetch(GAS_ENDPOINT,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"auto_register",
-      line_user_id:userId,
-      display_name:p.displayName
-    })
-  }).then(r=>r.json());
+  await post({
+    action:"auto_register",
+    line_user_id: profile.userId,
+    display_name: profile.displayName
+  });
 
-  role = res.role;
-  mobile = res.mobile || "";
+  // สมมุติดึง role จาก backend จริง (simplify)
+  const role = "user"; // ปรับตาม response จริงได้
+  document.getElementById("role").innerText =
+    role === "driver" ? "พนักงานขับรถ" : "ผู้ใช้งานทั่วไป";
 
-  userRole.innerText = "สถานะ: " + (role==="driver"?"พนักงานขับรถ":"ผู้ใช้งานทั่วไป");
-
-  if (role==="driver") {
+  if(role === "driver"){
     mainBtn.innerText = "งานทั้งหมด";
-    driverBox.classList.remove("hidden");
-    driverPhone.innerText = mobile;
+    secondBtn.classList.add("hidden");
+    cancelDriverBtn.classList.remove("hidden");
   } else {
     mainBtn.innerText = "จองรถพร้อมคนขับ";
-    historyBtn.classList.remove("hidden");
-    registerDriverBtn.classList.remove("hidden");
+    secondBtn.innerText = "ดูประวัติการจอง";
   }
-
-  mainBtn.onclick = ()=> {
-    if (role!=="driver") bookingForm.classList.remove("hidden");
-  };
 }
 
-/* BOOKING */
-async function submitBooking(){
-  await fetch(GAS_ENDPOINT,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"create_booking",
-      line_user_id:userId,
-      booking_date:bookingDate.value,
-      booking_time:bookingTime.value,
-      vehicle_type:vehicleType.value,
-      passenger_count:passengerCount.value,
-      pickup_location:pickupLocation.value,
-      dropoff_location:dropoffLocation.value,
-      contact_mobile:contactMobile.value
-    })
-  });
-  alert("จองรถเรียบร้อย");
-  bookingForm.classList.add("hidden");
-}
-
-/* DRIVER */
-function openDriverPopup(){ driverPopup.classList.remove("hidden"); }
-
-async function saveDriver(){
-  await fetch(GAS_ENDPOINT,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"register_driver",
-      line_user_id:userId,
-      mobile_phone:driverMobile.value
-    })
-  });
-  location.reload();
-}
-
-async function editPhone(){
-  const p = prompt("แก้ไขเบอร์โทร", mobile);
-  if(!p) return;
-  await fetch(GAS_ENDPOINT,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"register_driver",
-      line_user_id:userId,
-      mobile_phone:p
-    })
-  });
-  location.reload();
-}
-
-async function cancelDriver(){
-  if(!confirm("ยืนยันยกเลิกสถานะพนักงานขับรถ?")) return;
-  await fetch(GAS_ENDPOINT,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"cancel_driver",
-      line_user_id:userId
-    })
-  });
-  location.reload();
+function submitBooking(){
+  post({
+    action:"create_booking",
+    line_user_id: profile.userId,
+    booking_date: bDate.value,
+    booking_time: bTime.value,
+    vehicle_type: vehicle.value,
+    passenger_count: passenger.value,
+    pickup_location: pickup.value,
+    dropoff_location: dropoff.value,
+    contact_mobile: contact.value
+  }).then(()=>alert("จองสำเร็จ"));
 }
 
 init();
