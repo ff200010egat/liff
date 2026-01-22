@@ -47,7 +47,6 @@ input, select {
 
 <div id="driverBox"></div>
 
-<!-- ================= FORM ================= -->
 <div id="formBox">
   <h3 id="formTitle">ฟอร์มจองรถ</h3>
 
@@ -75,6 +74,10 @@ input, select {
 
 <script>
 const ENDPOINT = "https://script.google.com/macros/s/AKfycbw0jHGbDnPhOqE8NaqymxvdY0vuq0XaNVA8pqWBgu2zT4dhqNN4J1CvDPjIaJwWVJLgWg/exec";
+
+const mainBtn = document.getElementById("mainBtn");   // ✅ FIX
+const subBtn  = document.getElementById("subBtn");    // ✅ FIX
+
 let userId = "";
 let role = "";
 let mobile = "";
@@ -100,140 +103,3 @@ async function init() {
   }).then(r=>r.json());
 
   role = res.role;
-  mobile = res.mobile || "";
-  render();
-}
-
-function render() {
-  document.getElementById("role").innerText =
-    role === "driver"
-      ? "บทบาท: พนักงานขับรถ"
-      : "บทบาท: ผู้ใช้งานทั่วไป";
-
-  const driverBox = document.getElementById("driverBox");
-  driverBox.innerHTML = "";
-
-  if (role === "driver") {
-    mainBtn.innerText = "กรอกงานเอง";
-    formTitle.innerText = "ฟอร์มกรอกงาน (พนักงานขับรถ)";
-    driverBox.innerHTML = `
-      <button class="secondary" onclick="editDriverMobile()">แก้ไขเบอร์โทรพนักงานขับรถ</button>
-      <button class="danger" onclick="cancelDriverRole()">ยกเลิกบทบาทพนักงานขับรถ</button>
-    `;
-  } else {
-    mainBtn.innerText = "จองรถพร้อมคนขับ";
-    formTitle.innerText = "ฟอร์มจองรถพร้อมคนขับ";
-    driverBox.innerHTML = `
-      <button class="secondary" onclick="registerDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>
-    `;
-  }
-
-  mainBtn.onclick = showForm;
-  subBtn.innerText = "ดูประวัติ";
-  subBtn.onclick = () => alert("TODO: หน้าประวัติการจอง");
-}
-
-function showForm() {
-  document.getElementById("formBox").style.display = "block";
-  document.getElementById("contact_mobile").value = mobile;
-}
-
-function closeForm() {
-  document.getElementById("formBox").style.display = "none";
-}
-
-function isEmpty(v) {
-  return !v || v.toString().trim() === "";
-}
-
-async function submitBooking() {
-  if (isEmpty(booking_date.value)) return alert("กรุณาเลือกวันที่");
-  if (isEmpty(booking_time.value)) return alert("กรุณาเลือกเวลา");
-  if (isEmpty(vehicle_type.value)) return alert("กรุณาเลือกประเภทรถ");
-  if (isEmpty(passenger_count.value) || passenger_count.value <= 0)
-    return alert("กรุณาระบุจำนวนผู้โดยสาร");
-  if (isEmpty(pickup_location.value)) return alert("กรุณาระบุจุดรับ");
-  if (isEmpty(dropoff_location.value)) return alert("กรุณาระบุจุดส่ง");
-  if (isEmpty(contact_mobile.value)) return alert("กรุณาระบุเบอร์ติดต่อ");
-
-  const action = role === "driver" ? "driver_create_booking" : "create_booking";
-
-  const res = await fetch(ENDPOINT,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({
-      action,
-      line_user_id: userId,
-      driver_name: displayName,
-      booking_date: booking_date.value,
-      booking_time: booking_time.value,
-      vehicle_type: vehicle_type.value,
-      passenger_count: passenger_count.value,
-      pickup_location: pickup_location.value.trim(),
-      dropoff_location: dropoff_location.value.trim(),
-      contact_mobile: contact_mobile.value.trim()
-    })
-  }).then(r=>r.json());
-
-  if (res.success) {
-    alert("บันทึกเรียบร้อย");
-    location.reload();
-  } else {
-    alert("เกิดข้อผิดพลาด");
-  }
-}
-
-async function registerDriver() {
-  const m = prompt("กรุณาระบุเบอร์โทร");
-  if (!m) return;
-
-  const res = await fetch(ENDPOINT,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({
-      action:"register_driver",
-      line_user_id:userId,
-      mobile_phone:m
-    })
-  }).then(r=>r.json());
-
-  res.success ? location.reload() : alert("เบอร์โทรไม่ถูกต้อง");
-}
-
-async function editDriverMobile() {
-  const m = prompt("กรุณาระบุเบอร์โทรใหม่");
-  if (!m) return;
-
-  const res = await fetch(ENDPOINT,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({
-      action:"register_driver",
-      line_user_id:userId,
-      mobile_phone:m
-    })
-  }).then(r=>r.json());
-
-  res.success ? location.reload() : alert("เบอร์โทรไม่ถูกต้อง");
-}
-
-async function cancelDriverRole() {
-  if (!confirm("ยืนยันยกเลิกบทบาทพนักงานขับรถ?")) return;
-
-  const res = await fetch(ENDPOINT,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({
-      action:"cancel_driver",
-      line_user_id:userId
-    })
-  }).then(r=>r.json());
-
-  res.success ? location.reload() : alert("ไม่สามารถยกเลิกได้");
-}
-
-init();
-</script>
-
-</body>
-</html>
