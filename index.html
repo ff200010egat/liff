@@ -12,16 +12,24 @@ h2 { font-size:26px; margin-bottom:6px; }
 #role { font-size:18px; color:#555; margin-bottom:16px; }
 
 button {
-  width:100%; padding:16px; font-size:18px;
-  border-radius:10px; border:none; margin-bottom:10px;
+  width:100%;
+  padding:16px;
+  font-size:18px;
+  border-radius:10px;
+  border:none;
+  margin-bottom:10px;
 }
 .primary { background:#0a7cff; color:#fff; }
 .secondary { background:#e0e0e0; }
 .danger { background:#e53935; color:#fff; }
 
 input, select {
-  width:100%; padding:12px; font-size:16px;
-  margin-bottom:8px; border-radius:8px; border:1px solid #ccc;
+  width:100%;
+  padding:12px;
+  font-size:16px;
+  margin-bottom:8px;
+  border-radius:8px;
+  border:1px solid #ccc;
 }
 
 #formBox, #historyBox { display:none; }
@@ -46,7 +54,6 @@ input, select {
   <input type="date" id="booking_date">
   <input type="time" id="booking_time">
 
-  <!-- ✅ ประเภทรถ -->
   <select id="vehicle_type">
     <option value="">-- เลือกรถ --</option>
     <option value="ไม่ระบุ">ไม่ระบุ</option>
@@ -55,7 +62,6 @@ input, select {
     <option value="รถตู้">รถตู้</option>
   </select>
 
-  <!-- ✅ จำนวนผู้โดยสาร -->
   <input type="number" id="passenger_count" placeholder="จำนวนผู้โดยสาร">
 
   <input type="text" id="pickup_location" placeholder="จุดรับ">
@@ -69,7 +75,7 @@ input, select {
 <div id="historyBox"></div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbwdQH6tF0IV5KCrmOrA2bKe9kJKJkqHR1upjVR9q_ixgvgI7zxeTFVVlGBS9p9BH2sRgA/exec";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbwdQH6tF0IV5KCrmOrA2bKe9kJKJkqHR1upjVR9q_ixgvgI7zxeTFVVlGBS9p9BH2sRgA/exec";   // 🔴 ใส่ URL ของคุณ
 let userId = "";
 let role = "";
 let mobile = "";
@@ -82,7 +88,8 @@ async function init() {
   const p = await liff.getProfile();
   userId = p.userId;
   displayName = p.displayName;
-  username.innerText = displayName;
+
+  document.getElementById("username").innerText = displayName;
 
   const res = await fetch(ENDPOINT,{
     method:"POST",
@@ -99,44 +106,51 @@ async function init() {
 }
 
 function render() {
-  role === "driver"
-    ? roleBox("บทบาท: พนักงานขับรถ")
-    : roleBox("บทบาท: ผู้ใช้งานทั่วไป");
+  document.getElementById("role").innerText =
+    role === "driver"
+      ? "บทบาท: พนักงานขับรถ"
+      : "บทบาท: ผู้ใช้งานทั่วไป";
+
+  const driverBox = document.getElementById("driverBox");
+  driverBox.innerHTML = "";
 
   if (role === "driver") {
     mainBtn.innerText = "กรอกงานเอง";
     formTitle.innerText = "ฟอร์มกรอกงาน (พนักงานขับรถ)";
+
+    driverBox.innerHTML = `
+      <button class="secondary" onclick="editDriverMobile()">
+        แก้ไขเบอร์โทรพนักงานขับรถ
+      </button>
+
+      <button class="danger" onclick="cancelDriverRole()">
+        ยกเลิกบทบาทพนักงานขับรถ
+      </button>
+    `;
   } else {
     mainBtn.innerText = "จองรถพร้อมคนขับ";
     formTitle.innerText = "ฟอร์มจองรถพร้อมคนขับ";
-  }
 
-  mainBtn.onclick = showForm;
-
-  subBtn.innerText = "ดูประวัติ";
-  subBtn.onclick = () => alert("TODO: ดึงจาก sheet");
-
-  driverBox.innerHTML = "";
-  if (role === "user") {
     driverBox.innerHTML = `
       <button class="secondary" onclick="registerDriver()">
         ลงทะเบียนเป็นพนักงานขับรถ
       </button>
     `;
   }
-}
 
-function roleBox(text){
-  document.getElementById("role").innerText = text;
+  mainBtn.onclick = showForm;
+
+  subBtn.innerText = "ดูประวัติ";
+  subBtn.onclick = () => alert("TODO: หน้าประวัติการจอง");
 }
 
 function showForm() {
-  formBox.style.display = "block";
-  contact_mobile.value = mobile;
+  document.getElementById("formBox").style.display = "block";
+  document.getElementById("contact_mobile").value = mobile;
 }
 
 function closeForm() {
-  formBox.style.display = "none";
+  document.getElementById("formBox").style.display = "none";
 }
 
 function isEmpty(v) {
@@ -197,11 +211,52 @@ async function registerDriver() {
     alert("ลงทะเบียนเป็นพนักงานขับรถแล้ว");
     location.reload();
   } else {
-    alert("เบอร์ไม่ถูกต้อง");
+    alert("เบอร์โทรไม่ถูกต้อง (ต้องขึ้นต้นด้วย 0)");
+  }
+}
+
+async function editDriverMobile() {
+  const m = prompt("กรุณาระบุเบอร์โทรใหม่");
+  if (!m) return;
+
+  const res = await fetch(ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"register_driver",
+      line_user_id:userId,
+      mobile_phone:m
+    })
+  }).then(r=>r.json());
+
+  if (res.success) {
+    alert("อัปเดตเบอร์โทรเรียบร้อย");
+    location.reload();
+  } else {
+    alert("เบอร์โทรไม่ถูกต้อง");
+  }
+}
+
+async function cancelDriverRole() {
+  if (!confirm("ยืนยันยกเลิกบทบาทพนักงานขับรถ?")) return;
+
+  const res = await fetch(ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"cancel_driver",
+      line_user_id:userId
+    })
+  }).then(r=>r.json());
+
+  if (res.success) {
+    alert("ยกเลิกบทบาทเรียบร้อย");
+    location.reload();
+  } else {
+    alert("ไม่สามารถยกเลิกได้");
   }
 }
 
 init();
 </script>
+
 </body>
 </html>
