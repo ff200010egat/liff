@@ -143,10 +143,9 @@ function render() {
   subBtn.onclick = showHistory;
 }
 
-/* ================= REGISTER DRIVER (🔥 FIXED) ================= */
+/* ================= REGISTER DRIVER ================= */
 async function registerDriver() {
   const phone = prompt("กรุณากรอกเบอร์โทรพนักงานขับรถ");
-
   if (!phone) return;
 
   const res = await fetch(ENDPOINT, {
@@ -240,6 +239,14 @@ async function showHistory() {
   renderHistory(bookings);
 }
 
+/* ====== 🔥 FIX LOGIC CANCEL HERE ONLY ====== */
+function canUserCancelBooking(b) {
+  return (
+    b.booked_by === userId ||
+    b.driver_line_id === userId
+  );
+}
+
 function renderHistory(bookings) {
   const today = new Date().toISOString().slice(0,10);
   let active = [];
@@ -253,18 +260,20 @@ function renderHistory(bookings) {
 
   historyBox.innerHTML = `
     <h3>งานที่กำลังดำเนินการ</h3>
-    ${active.length ? active.map(b => renderBooking(b, true)).join("") : "<div>ไม่มีงาน</div>"}
+    ${active.length ? active.map(b => renderBooking(b)).join("") : "<div>ไม่มีงาน</div>"}
 
     <hr style="margin:16px 0">
 
     <h3>งานที่ผ่านมาแล้ว / ยกเลิก</h3>
-    ${past.length ? past.map(b => renderBooking(b, false)).join("") : "<div>ไม่มีงาน</div>"}
+    ${past.length ? past.map(b => renderBooking(b)).join("") : "<div>ไม่มีงาน</div>"}
 
     <button class="secondary" onclick="closeHistory()">ปิด</button>
   `;
 }
 
-function renderBooking(b, canCancel) {
+function renderBooking(b) {
+  const canCancel = canUserCancelBooking(b) && b.status !== "cancelled";
+
   return `
     <div style="background:#fff;padding:12px;border-radius:10px;margin-bottom:10px;">
       <div><b>วันที่:</b> ${b.booking_date} ${b.booking_time}</div>
@@ -272,7 +281,7 @@ function renderBooking(b, canCancel) {
       <div><b>รถ:</b> ${b.vehicle_type} | <b>ผู้โดยสาร:</b> ${b.passenger_count}</div>
       <div><b>สถานะ:</b> ${b.status}</div>
       ${
-        canCancel && b.status !== "cancelled"
+        canCancel
           ? `<button class="danger" onclick="cancelBooking('${b.booking_id}')">ยกเลิกงาน</button>`
           : ""
       }
