@@ -154,6 +154,43 @@ function showForm() {
 function closeForm() {
   document.getElementById("formBox").style.display = "none";
 }
+async function submitBooking() {
+  if (!booking_date.value) return alert("กรุณาเลือกวันที่");
+  if (!booking_time.value) return alert("กรุณาเลือกเวลา");
+  if (!vehicle_type.value) return alert("กรุณาเลือกประเภทรถ");
+  if (!passenger_count.value || passenger_count.value <= 0)
+    return alert("กรุณาระบุจำนวนผู้โดยสาร");
+  if (!pickup_location.value) return alert("กรุณาระบุจุดรับ");
+  if (!dropoff_location.value) return alert("กรุณาระบุจุดส่ง");
+  if (!contact_mobile.value) return alert("กรุณาระบุเบอร์ติดต่อ");
+
+  const action =
+    role === "driver" ? "driver_create_booking" : "create_booking";
+
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    body: JSON.stringify({
+      action,
+      line_user_id: userId,
+      driver_name: displayName,
+      booking_date: booking_date.value,
+      booking_time: booking_time.value,
+      vehicle_type: vehicle_type.value,
+      passenger_count: passenger_count.value,
+      pickup_location: pickup_location.value.trim(),
+      dropoff_location: dropoff_location.value.trim(),
+      contact_mobile: contact_mobile.value.trim()
+    })
+  }).then(r => r.json());
+
+  if (res.success) {
+    alert("บันทึกเรียบร้อย");
+    closeForm();
+    showHistory();
+  } else {
+    alert("เกิดข้อผิดพลาดในการบันทึก");
+  }
+}
 
 /* ================= HISTORY LOGIC ================= */
 
