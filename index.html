@@ -201,33 +201,49 @@ function renderHistory(bookings) {
     else past.push(b);
   });
 
-  historyBox.innerHTML = `
-    <h3>งานที่กำลังดำเนินการ</h3>
-    ${active.length ? active.map(renderBooking).join("") : "<div>ไม่มีงาน</div>"}
+historyBox.innerHTML = `
+  <h3>งานที่กำลังดำเนินการ</h3>
+  ${active.length ? active.map(b => renderBooking(b, true)).join("") : "<div>ไม่มีงาน</div>"}
 
-    <hr style="margin:16px 0">
+  <hr style="margin:16px 0">
 
-    <h3>งานที่ผ่านมาแล้ว / ยกเลิก</h3>
-    ${past.length ? past.map(renderBooking).join("") : "<div>ไม่มีงาน</div>"}
+  <h3>งานที่ผ่านมาแล้ว / ยกเลิก</h3>
+  ${past.length ? past.map(b => renderBooking(b, false)).join("") : "<div>ไม่มีงาน</div>"}
 
-    <button class="secondary" onclick="closeHistory()">ปิด</button>
-  `;
+  <button class="secondary" onclick="closeHistory()">ปิด</button>
+`;
+
 }
 
 
 
-function renderBooking(b) {
+function renderBooking(b, canCancel) {
+  const isCancelled = b.status === "cancelled";
+
   return `
-    <div style="background:#fff;padding:12px;border-radius:10px;margin-bottom:10px">
+    <div style="
+      background:#fff;
+      padding:12px;
+      border-radius:10px;
+      margin-bottom:10px;
+      ${isCancelled ? "opacity:0.6" : ""}
+    ">
       <div><b>วันที่:</b> ${b.booking_date} ${b.booking_time}</div>
       <div><b>เส้นทาง:</b> ${b.pickup_location} → ${b.dropoff_location}</div>
       <div><b>รถ:</b> ${b.vehicle_type} | <b>ผู้โดยสาร:</b> ${b.passenger_count}</div>
-      <button class="danger" onclick="cancelBooking('${b.booking_id}')">
-        ยกเลิกงาน
-      </button>
+      <div><b>สถานะ:</b> ${b.status}</div>
+
+      ${
+        canCancel && !isCancelled
+          ? `<button class="danger" onclick="cancelBooking('${b.booking_id}')">
+               ยกเลิกงาน
+             </button>`
+          : ``
+      }
     </div>
   `;
 }
+
 
 function closeHistory() {
   historyBox.style.display = "none";
