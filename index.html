@@ -25,27 +25,12 @@ input, select {
 }
 
 #formBox { display:none; }
-#loginWarn {
-  display:none;
-  padding:16px;
-  background:#fff3cd;
-  border:1px solid #ffeeba;
-  border-radius:12px;
-  margin-bottom:16px;
-  font-size:18px;
-}
 </style>
 </head>
 
 <body>
 
 <h2>ระบบจองรถ หก-มน.</h2>
-
-<div id="loginWarn">
-  กรุณาเปิดหน้านี้ผ่านแอป LINE เท่านั้น<br>
-  (ไม่รองรับการใช้งานผ่าน Web Browser)
-</div>
-
 <div id="username"></div>
 <div id="role"></div>
 
@@ -82,42 +67,60 @@ let userId = "";
 let role = "user";
 let mobile = "";
 
+/* ================= INIT + LOGIN SAFE ================= */
 async function init() {
-  await liff.init({ liffId:"2008934745-qU0fPztf" });
+  try {
+    await liff.init({ liffId:"2008934745-qU0fPztf" });
 
-  // ✅ ADD: browser guard
-  if (!liff.isInClient()) {
-    document.getElementById("loginWarn").style.display = "block";
-    return;
+    // ===== FORCE LOGIN (กันค้างบน PC) =====
+    if (!liff.isLoggedIn()) {
+      liff.login();
+      return; // ⛔ ห้ามให้โค้ดไหลต่อ
+    }
+
+    const p = await liff.getProfile();
+
+    if (!p || !p.userId) {
+      alert("ไม่พบข้อมูลผู้ใช้งาน กรุณา login ใหม่");
+      liff.logout();
+      liff.login();
+      return;
+    }
+
+    userId = p.userId;
+    document.getElementById("username").innerText = p.displayName || "";
+
+    const res = await fetch(ENDPOINT,{
+      method:"POST",
+      body:JSON.stringify({
+        action:"auto_register",
+        line_user_id:userId,
+        display_name:p.displayName || ""
+      })
+    }).then(r=>r.json());
+
+    if (!res || !res.role) {
+      alert("ไม่สามารถโหลดข้อมูลผู้ใช้งานได้");
+      return;
+    }
+
+    role = res.role;
+    mobile = res.mobile || "";
+
+    render();
+
+  } catch (err) {
+    console.error(err);
+    alert("เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณารีเฟรชหน้า");
   }
-
-  if (!liff.isLoggedIn()) {
-    liff.login();
-    return;
-  }
-
-  const p = await liff.getProfile();
-  userId = p.userId;
-  document.getElementById("username").innerText = p.displayName;
-
-  const res = await fetch(ENDPOINT,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"auto_register",
-      line_user_id:userId,
-      display_name:p.displayName
-    })
-  }).then(r=>r.json());
-
-  role = res.role;
-  mobile = res.mobile || "";
-
-  render();
 }
 
+/* ================= RENDER ================= */
 function render() {
   document.getElementById("role").innerText =
-    role === "driver" ? "บทบาท: พนักงานขับรถ" : "บทบาท: ผู้ใช้งานทั่วไป";
+    role === "driver"
+      ? "บทบาท: พนักงานขับรถ"
+      : "บทบาท: ผู้ใช้งานทั่วไป";
 
   const driverBox = document.getElementById("driverBox");
   driverBox.innerHTML = "";
@@ -140,6 +143,7 @@ function render() {
   }
 }
 
+/* ================= FORM ================= */
 function showForm() {
   document.getElementById("formBox").style.display="block";
   document.getElementById("contact_mobile").value = mobile;
@@ -149,11 +153,14 @@ function closeForm() {
   document.getElementById("formBox").style.display="none";
 }
 
+/* ================= VALIDATION ================= */
 function isEmpty(v) {
   return !v || v.toString().trim() === "";
 }
 
+/* ================= SUBMIT ================= */
 async function submitBooking() {
+
   if (isEmpty(booking_date.value)) return alert("กรุณาเลือกวันที่จอง");
   if (isEmpty(booking_time.value)) return alert("กรุณาเลือกเวลา");
   if (isEmpty(vehicle_type.value)) return alert("กรุณาเลือกประเภทรถ");
@@ -188,5 +195,6 @@ async function submitBooking() {
 
 init();
 </script>
+
 </body>
 </html>
