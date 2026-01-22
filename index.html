@@ -12,27 +12,19 @@ h2 { font-size:26px; margin-bottom:6px; }
 #role { font-size:18px; color:#555; margin-bottom:16px; }
 
 button {
-  width:100%;
-  padding:16px;
-  font-size:18px;
-  border-radius:10px;
-  border:none;
-  margin-bottom:10px;
+  width:100%; padding:18px; font-size:20px;
+  border-radius:12px; border:none; margin-bottom:12px;
 }
 .primary { background:#0a7cff; color:#fff; }
 .secondary { background:#e0e0e0; }
 .danger { background:#e53935; color:#fff; }
 
 input, select {
-  width:100%;
-  padding:12px;
-  font-size:16px;
-  margin-bottom:8px;
-  border-radius:8px;
-  border:1px solid #ccc;
+  width:100%; padding:14px; font-size:18px;
+  margin-bottom:10px; border-radius:10px; border:1px solid #ccc;
 }
 
-#formBox, #historyBox { display:none; }
+#formBox { display:none; }
 </style>
 </head>
 
@@ -48,14 +40,13 @@ input, select {
 <div id="driverBox"></div>
 
 <div id="formBox">
-  <h3 id="formTitle">ฟอร์มจองรถ</h3>
+  <h3>ฟอร์มจองรถพร้อมคนขับ</h3>
 
   <input type="date" id="booking_date">
   <input type="time" id="booking_time">
 
   <select id="vehicle_type">
     <option value="">-- เลือกรถ --</option>
-    <option value="ไม่ระบุ">ไม่ระบุ</option>
     <option value="รถเก๋ง">รถเก๋ง</option>
     <option value="รถกระบะ">รถกระบะ</option>
     <option value="รถตู้">รถตู้</option>
@@ -66,22 +57,15 @@ input, select {
   <input type="text" id="dropoff_location" placeholder="จุดส่ง">
   <input type="text" id="contact_mobile" placeholder="เบอร์ติดต่อ">
 
-  <button class="primary" onclick="submitBooking()">บันทึก</button>
+  <button class="primary" onclick="submitBooking()">ยืนยันการจอง</button>
   <button class="secondary" onclick="closeForm()">ยกเลิก</button>
 </div>
 
-<div id="historyBox"></div>
-
 <script>
 const ENDPOINT = "https://script.google.com/macros/s/AKfycbw0jHGbDnPhOqE8NaqymxvdY0vuq0XaNVA8pqWBgu2zT4dhqNN4J1CvDPjIaJwWVJLgWg/exec";
-
-const mainBtn = document.getElementById("mainBtn");   // ✅ FIX
-const subBtn  = document.getElementById("subBtn");    // ✅ FIX
-
 let userId = "";
-let role = "";
+let role = "user";
 let mobile = "";
-let displayName = "";
 
 async function init() {
   await liff.init({ liffId:"2008934745-qU0fPztf" });
@@ -89,17 +73,111 @@ async function init() {
 
   const p = await liff.getProfile();
   userId = p.userId;
-  displayName = p.displayName;
-  document.getElementById("username").innerText = displayName;
+  document.getElementById("username").innerText = p.displayName;
 
   const res = await fetch(ENDPOINT,{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
     body:JSON.stringify({
       action:"auto_register",
       line_user_id:userId,
-      display_name:displayName
+      display_name:p.displayName
     })
   }).then(r=>r.json());
 
   role = res.role;
+  mobile = res.mobile || "";
+
+  render();
+}
+
+function render() {
+  document.getElementById("role").innerText =
+    role === "driver" ? "บทบาท: พนักงานขับรถ" : "บทบาท: ผู้ใช้งานทั่วไป";
+
+  const driverBox = document.getElementById("driverBox");
+  driverBox.innerHTML = "";
+
+  if (role === "user") {
+    mainBtn.innerText = "จองรถพร้อมคนขับ";
+    mainBtn.onclick = showForm;
+
+    subBtn.innerText = "ดูประวัติการจอง";
+    subBtn.onclick = () => alert("TODO");
+
+    driverBox.innerHTML = `
+      <button class="secondary" onclick="showDriverRegister()">
+        ลงทะเบียนเป็นพนักงานขับรถ
+      </button>
+    `;
+  } else {
+    mainBtn.innerText = "งานทั้งหมด";
+    subBtn.innerText = "ดูประวัติงาน";
+  }
+}
+
+function showForm() {
+  document.getElementById("formBox").style.display="block";
+  document.getElementById("contact_mobile").value = mobile;
+}
+
+function closeForm() {
+  document.getElementById("formBox").style.display="none";
+}
+
+/* ================= VALIDATION ================= */
+function isEmpty(v) {
+  return !v || v.toString().trim() === "";
+}
+
+async function submitBooking() {
+  // ---- VALIDATE ----
+  if (isEmpty(booking_date.value)) {
+    return alert("กรุณาเลือกวันที่จอง");
+  }
+  if (isEmpty(booking_time.value)) {
+    return alert("กรุณาเลือกเวลา");
+  }
+  if (isEmpty(vehicle_type.value)) {
+    return alert("กรุณาเลือกประเภทรถ");
+  }
+  if (isEmpty(passenger_count.value) || passenger_count.value <= 0) {
+    return alert("กรุณาระบุจำนวนผู้โดยสาร");
+  }
+  if (isEmpty(pickup_location.value)) {
+    return alert("กรุณาระบุจุดรับ");
+  }
+  if (isEmpty(dropoff_location.value)) {
+    return alert("กรุณาระบุจุดส่ง");
+  }
+  if (isEmpty(contact_mobile.value)) {
+    return alert("กรุณาระบุเบอร์ติดต่อ");
+  }
+
+  // ---- SEND ----
+  const res = await fetch(ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"create_booking",
+      line_user_id:userId,
+      booking_date:booking_date.value,
+      booking_time:booking_time.value,
+      vehicle_type:vehicle_type.value,
+      passenger_count:passenger_count.value,
+      pickup_location:pickup_location.value.trim(),
+      dropoff_location:dropoff_location.value.trim(),
+      contact_mobile:contact_mobile.value.trim()
+    })
+  }).then(r=>r.json());
+
+  if (res.success) {
+    alert("จองรถเรียบร้อย");
+    location.reload();
+  } else {
+    alert("เกิดข้อผิดพลาด");
+  }
+}
+
+init();
+</script>
+</body>
+</html>
