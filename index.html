@@ -40,10 +40,10 @@ input, select {
 <div id="driverBox"></div>
 
 <div id="formBox">
-  <h3>กรอกข้อมูลการจองรถพร้อมคนขับ</h3>
+  <h3>ฟอร์มจองรถพร้อมคนขับ</h3>
 
-  <input type="date" id="booking_date" placeholder="วัน">
-  <input type="time" id="booking_time" placeholder="เวลา">
+  <input type="date" id="booking_date">
+  <input type="time" id="booking_time">
 
   <select id="vehicle_type">
     <option value="ไม่ระบุ">ไม่ระบุ</option>
@@ -158,9 +158,8 @@ async function submitBooking() {
   const res = await fetch(ENDPOINT,{
     method:"POST",
     body:JSON.stringify({
-        action:"create_booking",
+      action:"create_booking",
       line_user_id:userId,
-      display_name: profile.displayName, // ✅ NEW
       booking_date:booking_date.value,
       booking_time:booking_time.value,
       vehicle_type:vehicle_type.value,
