@@ -63,7 +63,6 @@ input, select {
   </select>
 
   <input type="number" id="passenger_count" placeholder="จำนวนผู้โดยสาร">
-
   <input type="text" id="pickup_location" placeholder="จุดรับ">
   <input type="text" id="dropoff_location" placeholder="จุดส่ง">
   <input type="text" id="contact_mobile" placeholder="เบอร์ติดต่อ">
@@ -75,7 +74,7 @@ input, select {
 <div id="historyBox"></div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbwdQH6tF0IV5KCrmOrA2bKe9kJKJkqHR1upjVR9q_ixgvgI7zxeTFVVlGBS9p9BH2sRgA/exec";   // 🔴 ใส่ URL ของคุณ
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbw0jHGbDnPhOqE8NaqymxvdY0vuq0XaNVA8pqWBgu2zT4dhqNN4J1CvDPjIaJwWVJLgWg/exec";
 let userId = "";
 let role = "";
 let mobile = "";
@@ -88,11 +87,11 @@ async function init() {
   const p = await liff.getProfile();
   userId = p.userId;
   displayName = p.displayName;
-
   document.getElementById("username").innerText = displayName;
 
   const res = await fetch(ENDPOINT,{
     method:"POST",
+    headers:{ "Content-Type":"application/json" },
     body:JSON.stringify({
       action:"auto_register",
       line_user_id:userId,
@@ -117,29 +116,19 @@ function render() {
   if (role === "driver") {
     mainBtn.innerText = "กรอกงานเอง";
     formTitle.innerText = "ฟอร์มกรอกงาน (พนักงานขับรถ)";
-
     driverBox.innerHTML = `
-      <button class="secondary" onclick="editDriverMobile()">
-        แก้ไขเบอร์โทรพนักงานขับรถ
-      </button>
-
-      <button class="danger" onclick="cancelDriverRole()">
-        ยกเลิกบทบาทพนักงานขับรถ
-      </button>
+      <button class="secondary" onclick="editDriverMobile()">แก้ไขเบอร์โทรพนักงานขับรถ</button>
+      <button class="danger" onclick="cancelDriverRole()">ยกเลิกบทบาทพนักงานขับรถ</button>
     `;
   } else {
     mainBtn.innerText = "จองรถพร้อมคนขับ";
     formTitle.innerText = "ฟอร์มจองรถพร้อมคนขับ";
-
     driverBox.innerHTML = `
-      <button class="secondary" onclick="registerDriver()">
-        ลงทะเบียนเป็นพนักงานขับรถ
-      </button>
+      <button class="secondary" onclick="registerDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>
     `;
   }
 
   mainBtn.onclick = showForm;
-
   subBtn.innerText = "ดูประวัติ";
   subBtn.onclick = () => alert("TODO: หน้าประวัติการจอง");
 }
@@ -167,11 +156,11 @@ async function submitBooking() {
   if (isEmpty(dropoff_location.value)) return alert("กรุณาระบุจุดส่ง");
   if (isEmpty(contact_mobile.value)) return alert("กรุณาระบุเบอร์ติดต่อ");
 
-  const action =
-    role === "driver" ? "driver_create_booking" : "create_booking";
+  const action = role === "driver" ? "driver_create_booking" : "create_booking";
 
   const res = await fetch(ENDPOINT,{
     method:"POST",
+    headers:{ "Content-Type":"application/json" },
     body:JSON.stringify({
       action,
       line_user_id: userId,
@@ -200,6 +189,7 @@ async function registerDriver() {
 
   const res = await fetch(ENDPOINT,{
     method:"POST",
+    headers:{ "Content-Type":"application/json" },
     body:JSON.stringify({
       action:"register_driver",
       line_user_id:userId,
@@ -207,12 +197,7 @@ async function registerDriver() {
     })
   }).then(r=>r.json());
 
-  if (res.success) {
-    alert("ลงทะเบียนเป็นพนักงานขับรถแล้ว");
-    location.reload();
-  } else {
-    alert("เบอร์โทรไม่ถูกต้อง (ต้องขึ้นต้นด้วย 0)");
-  }
+  res.success ? location.reload() : alert("เบอร์โทรไม่ถูกต้อง");
 }
 
 async function editDriverMobile() {
@@ -221,6 +206,7 @@ async function editDriverMobile() {
 
   const res = await fetch(ENDPOINT,{
     method:"POST",
+    headers:{ "Content-Type":"application/json" },
     body:JSON.stringify({
       action:"register_driver",
       line_user_id:userId,
@@ -228,12 +214,7 @@ async function editDriverMobile() {
     })
   }).then(r=>r.json());
 
-  if (res.success) {
-    alert("อัปเดตเบอร์โทรเรียบร้อย");
-    location.reload();
-  } else {
-    alert("เบอร์โทรไม่ถูกต้อง");
-  }
+  res.success ? location.reload() : alert("เบอร์โทรไม่ถูกต้อง");
 }
 
 async function cancelDriverRole() {
@@ -241,18 +222,14 @@ async function cancelDriverRole() {
 
   const res = await fetch(ENDPOINT,{
     method:"POST",
+    headers:{ "Content-Type":"application/json" },
     body:JSON.stringify({
       action:"cancel_driver",
       line_user_id:userId
     })
   }).then(r=>r.json());
 
-  if (res.success) {
-    alert("ยกเลิกบทบาทเรียบร้อย");
-    location.reload();
-  } else {
-    alert("ไม่สามารถยกเลิกได้");
-  }
+  res.success ? location.reload() : alert("ไม่สามารถยกเลิกได้");
 }
 
 init();
