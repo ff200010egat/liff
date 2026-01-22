@@ -18,6 +18,7 @@ button {
   border-radius:10px;
   border:none;
   margin-bottom:10px;
+  cursor: pointer;
 }
 .primary { background:#0a7cff; color:#fff; }
 .secondary { background:#e0e0e0; }
@@ -26,6 +27,7 @@ button {
 input, select {
   width:100%;
   padding:12px;
+  box-sizing: border-box;
   font-size:16px;
   margin-bottom:8px;
   border-radius:8px;
@@ -47,13 +49,10 @@ input, select {
 
 <div id="driverBox"></div>
 
-<!-- ================= FORM ================= -->
 <div id="formBox">
   <h3 id="formTitle">กรอกข้อมูลการจองให้ครบถ้วน</h3>
-
   <input type="date" id="booking_date">
   <input type="time" id="booking_time">
-
   <select id="vehicle_type">
     <option value="">-- เลือกรถ --</option>
     <option value="ไม่ระบุ">ไม่ระบุ</option>
@@ -61,21 +60,18 @@ input, select {
     <option value="รถกระบะ">รถกระบะ</option>
     <option value="รถตู้">รถตู้</option>
   </select>
-
   <input type="number" id="passenger_count" placeholder="จำนวนผู้โดยสาร">
   <input type="text" id="pickup_location" placeholder="จุดรับ">
   <input type="text" id="dropoff_location" placeholder="จุดส่ง">
   <input type="text" id="contact_mobile" placeholder="เบอร์ติดต่อ">
-
   <button class="primary" onclick="submitBooking()">บันทึก</button>
   <button class="secondary" onclick="closeForm()">ยกเลิก</button>
 </div>
 
-<!-- ================= HISTORY ================= -->
 <div id="historyBox"></div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbxMfBCnG3Kr7z3zFT50GiDUiRdi7J42usJYeqcJI-yb4GqXXGht0AawZS2ec1yMfHzlbA/exec";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbxHoPTWFxxf7xtFk_DoN7gN1ReY1BnlF3C5vv04eyodN0eIAiJqICpSj1FFtXjmtUg6mQ/exec";
 let userId = "";
 let role = "";
 let mobile = "";
@@ -88,7 +84,6 @@ async function init() {
   const p = await liff.getProfile();
   userId = p.userId;
   displayName = p.displayName;
-
   document.getElementById("username").innerText = displayName;
 
   const res = await fetch(ENDPOINT,{
@@ -106,10 +101,12 @@ async function init() {
 }
 
 function render() {
+  const mainBtn = document.getElementById("mainBtn");
+  const subBtn = document.getElementById("subBtn");
+  const formTitle = document.getElementById("formTitle");
+
   document.getElementById("role").innerText =
-    role === "driver"
-      ? "บทบาท: พนักงานขับรถ"
-      : "บทบาท: ผู้ใช้งานทั่วไป";
+    role === "driver" ? "บทบาท: พนักงานขับรถ" : "บทบาท: ผู้ใช้งานทั่วไป";
 
   const driverBox = document.getElementById("driverBox");
   driverBox.innerHTML = "";
@@ -117,25 +114,14 @@ function render() {
   if (role === "driver") {
     mainBtn.innerText = "กรอกงานเอง";
     formTitle.innerText = "ฟอร์มกรอกงาน (พนักงานขับรถ)";
-
     driverBox.innerHTML = `
-      <button class="secondary" onclick="editDriverMobile()">
-        แก้ไขเบอร์โทรพนักงานขับรถ
-      </button>
-
-      <button class="danger" onclick="cancelDriverRole()">
-        ยกเลิกบทบาทพนักงานขับรถ
-      </button>
+      <button class="secondary" onclick="editDriverMobile()">แก้ไขเบอร์โทรพนักงานขับรถ</button>
+      <button class="danger" onclick="cancelDriverRole()">ยกเลิกบทบาทพนักงานขับรถ</button>
     `;
   } else {
     mainBtn.innerText = "จองรถพร้อมคนขับ";
     formTitle.innerText = "ฟอร์มจองรถพร้อมคนขับ";
-
-    driverBox.innerHTML = `
-      <button class="secondary" onclick="registerDriver()">
-        ลงทะเบียนเป็นพนักงานขับรถ
-      </button>
-    `;
+    driverBox.innerHTML = `<button class="secondary" onclick="registerDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>`;
   }
 
   mainBtn.onclick = showForm;
@@ -143,178 +129,135 @@ function render() {
   subBtn.onclick = showHistory;
 }
 
-/* ================= REGISTER DRIVER ================= */
+/* ================= DRIVER ACTIONS ================= */
 async function registerDriver() {
-  const phone = prompt("กรุณากรอกเบอร์โทรพนักงานขับรถ");
+  const phone = prompt("กรุณากรอกเบอร์โทรพนักงานขับรถ", mobile);
   if (!phone) return;
-
   const res = await fetch(ENDPOINT, {
     method: "POST",
-    body: JSON.stringify({
-      action: "register_driver",
-      line_user_id: userId,
-      mobile_phone: phone.trim()
-    })
+    body: JSON.stringify({ action: "register_driver", line_user_id: userId, mobile_phone: phone.trim() })
   }).then(r => r.json());
-
-  if (res.success) {
-    alert("ลงทะเบียนเป็นพนักงานขับรถเรียบร้อย");
-    role = "driver";
-    mobile = phone.trim();
-    render();
-  } else {
-    alert("ไม่สามารถลงทะเบียนได้ กรุณาตรวจสอบเบอร์โทร");
-  }
+  if (res.success) { alert("ลงทะเบียนเรียบร้อย"); role = "driver"; mobile = phone.trim(); render(); }
+  else alert("ไม่สามารถลงทะเบียนได้");
 }
 
+async function editDriverMobile() {
+  const phone = prompt("กรุณากรอกเบอร์โทรใหม่", mobile);
+  if (!phone || phone === mobile) return;
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    body: JSON.stringify({ action: "edit_driver_mobile", line_user_id: userId, mobile_phone: phone.trim() })
+  }).then(r => r.json());
+  if (res.success) { alert("แก้ไขเบอร์โทรเรียบร้อย"); mobile = phone.trim(); }
+  else alert("แก้ไขไม่สำเร็จ");
+}
+
+async function cancelDriverRole() {
+  if (!confirm("ยืนยันการยกเลิกบทบาทพนักงานขับรถ?")) return;
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    body: JSON.stringify({ action: "cancel_driver", line_user_id: userId })
+  }).then(r => r.json());
+  if (res.success) { alert("ยกเลิกบทบาทเรียบร้อย"); role = "user"; render(); }
+  else alert("ทำรายการไม่สำเร็จ");
+}
+
+/* ================= BOOKING ================= */
 function showForm() {
-  formBox.style.display = "block";
-  historyBox.style.display = "none";
-  contact_mobile.value = mobile;
+  document.getElementById("formBox").style.display = "block";
+  document.getElementById("historyBox").style.display = "none";
+  document.getElementById("contact_mobile").value = mobile;
 }
 
-function closeForm() {
-  formBox.style.display = "none";
-}
+function closeForm() { document.getElementById("formBox").style.display = "none"; }
 
 async function submitBooking() {
-  if (!booking_date.value) return alert("กรุณาเลือกวันที่");
-  if (!booking_time.value) return alert("กรุณาเลือกเวลา");
-  if (!vehicle_type.value) return alert("กรุณาเลือกประเภทรถ");
-  if (!passenger_count.value || passenger_count.value <= 0)
-    return alert("กรุณาระบุจำนวนผู้โดยสาร");
-  if (!pickup_location.value) return alert("กรุณาระบุจุดรับ");
-  if (!dropoff_location.value) return alert("กรุณาระบุจุดส่ง");
-  if (!contact_mobile.value) return alert("กรุณาระบุเบอร์ติดต่อ");
+  const fields = ["booking_date", "booking_time", "vehicle_type", "passenger_count", "pickup_location", "dropoff_location", "contact_mobile"];
+  for (let f of fields) { if (!document.getElementById(f).value) return alert("กรุณากรอกข้อมูลให้ครบ"); }
 
-  const action =
-    role === "driver" ? "driver_create_booking" : "create_booking";
-
+  const action = role === "driver" ? "driver_create_booking" : "create_booking";
   const res = await fetch(ENDPOINT, {
     method: "POST",
     body: JSON.stringify({
       action,
       line_user_id: userId,
       driver_name: displayName,
-      booking_date: booking_date.value,
-      booking_time: booking_time.value,
-      vehicle_type: vehicle_type.value,
-      passenger_count: passenger_count.value,
-      pickup_location: pickup_location.value.trim(),
-      dropoff_location: dropoff_location.value.trim(),
-      contact_mobile: contact_mobile.value.trim()
+      booking_date: document.getElementById("booking_date").value,
+      booking_time: document.getElementById("booking_time").value,
+      vehicle_type: document.getElementById("vehicle_type").value,
+      passenger_count: document.getElementById("passenger_count").value,
+      pickup_location: document.getElementById("pickup_location").value.trim(),
+      dropoff_location: document.getElementById("dropoff_location").value.trim(),
+      contact_mobile: document.getElementById("contact_mobile").value.trim()
     })
   }).then(r => r.json());
 
-  if (res.success) {
-    alert("บันทึกเรียบร้อย");
-    closeForm();
-    showHistory();
-  } else {
-    alert("เกิดข้อผิดพลาดในการบันทึก");
-  }
+  if (res.success) { alert("บันทึกเรียบร้อย"); closeForm(); showHistory(); }
+  else alert("เกิดข้อผิดพลาด");
 }
 
 /* ================= HISTORY ================= */
 async function showHistory() {
-  formBox.style.display = "none";
-  historyBox.style.display = "block";
-  historyBox.innerHTML = "<h3>ประวัติการจอง</h3><div>กำลังโหลด...</div>";
+  document.getElementById("formBox").style.display = "none";
+  const hBox = document.getElementById("historyBox");
+  hBox.style.display = "block";
+  hBox.innerHTML = "<h3>ประวัติการจอง</h3><div>กำลังโหลด...</div>";
 
   const res = await fetch(ENDPOINT,{
     method:"POST",
-    body:JSON.stringify({
-      action:"get_my_bookings",
-      line_user_id:userId
-    })
+    body:JSON.stringify({ action:"get_my_bookings", line_user_id:userId })
   }).then(r=>r.json());
 
   const bookings = Array.isArray(res.data) ? res.data : [];
-
-  if (!bookings.length) {
-    historyBox.innerHTML = "<div>ไม่พบข้อมูล</div>";
-    return;
-  }
-
+  if (!bookings.length) { hBox.innerHTML = "<div>ไม่พบข้อมูล</div><button class='secondary' onclick='closeHistory()'>ปิด</button>"; return; }
   renderHistory(bookings);
-}
-
-/* ====== 🔥 FIX LOGIC CANCEL HERE ONLY ====== */
-function canUserCancelBooking(b) {
-  return (
-    b.booked_by === userId ||
-    b.driver_line_id === userId
-  );
 }
 
 function renderHistory(bookings) {
   const today = new Date().toISOString().slice(0,10);
-  let active = [];
-  let past = [];
-
+  let active = [], past = [];
   bookings.forEach(b => {
-    if (b.status === "cancelled") past.push(b);
-    else if (b.booking_date >= today) active.push(b);
-    else past.push(b);
+    if (b.status === "cancelled" || b.booking_date < today) past.push(b);
+    else active.push(b);
   });
 
-  historyBox.innerHTML = `
+  const hBox = document.getElementById("historyBox");
+  hBox.innerHTML = `
     <h3>งานที่กำลังดำเนินการ</h3>
     ${active.length ? active.map(b => renderBooking(b)).join("") : "<div>ไม่มีงาน</div>"}
-
-    <hr style="margin:16px 0">
-
+    <hr>
     <h3>งานที่ผ่านมาแล้ว / ยกเลิก</h3>
     ${past.length ? past.map(b => renderBooking(b)).join("") : "<div>ไม่มีงาน</div>"}
-
     <button class="secondary" onclick="closeHistory()">ปิด</button>
   `;
 }
 
 function renderBooking(b) {
-  const canCancel = canUserCancelBooking(b) && b.status !== "cancelled";
-
+  // เช็คสิทธิ์ยกเลิก: เป็นคนจองเอง หรือ เป็นคนขับงานนี้
+  const canCancel = (b.booked_by === userId || b.driver_line_id === userId) && b.status !== "cancelled";
   return `
-    <div style="background:#fff;padding:12px;border-radius:10px;margin-bottom:10px;">
+    <div style="background:#fff;padding:12px;border-radius:10px;margin-bottom:10px; border:1px solid #ddd;">
       <div><b>วันที่:</b> ${b.booking_date} ${b.booking_time}</div>
       <div><b>เส้นทาง:</b> ${b.pickup_location} → ${b.dropoff_location}</div>
-      <div><b>รถ:</b> ${b.vehicle_type} | <b>ผู้โดยสาร:</b> ${b.passenger_count}</div>
-      <div><b>สถานะ:</b> ${b.status}</div>
-      ${
-        canCancel
-          ? `<button class="danger" onclick="cancelBooking('${b.booking_id}')">ยกเลิกงาน</button>`
-          : ""
-      }
+      <div><b>สถานะ:</b> ${b.status} ${b.driver_name ? '('+b.driver_name+')' : ''}</div>
+      ${canCancel ? `<button class="danger" style="margin-top:8px;" onclick="cancelBooking('${b.booking_id}')">ยกเลิกงาน</button>` : ""}
     </div>
   `;
 }
 
-function closeHistory() {
-  historyBox.style.display = "none";
-}
+function closeHistory() { document.getElementById("historyBox").style.display = "none"; }
 
 async function cancelBooking(id) {
   if (!confirm("ยืนยันยกเลิกงานนี้?")) return;
-
   const res = await fetch(ENDPOINT, {
     method: "POST",
-    body: JSON.stringify({
-      action: "cancel_booking",
-      booking_id: id,
-      line_user_id: userId
-    })
+    body: JSON.stringify({ action: "cancel_booking", booking_id: id, line_user_id: userId })
   }).then(r => r.json());
-
-  if (res.success) {
-    alert("ยกเลิกงานเรียบร้อย");
-    showHistory();
-  } else {
-    alert("ไม่สามารถยกเลิกงานได้");
-  }
+  if (res.success) { alert("ยกเลิกงานเรียบร้อย"); showHistory(); }
+  else alert("ไม่สามารถยกเลิกงานได้");
 }
 
 init();
 </script>
-
 </body>
 </html>
