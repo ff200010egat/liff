@@ -197,6 +197,13 @@ function renderHistory(bookings) {
       if (!related) return;
     }
 
+    // ✅ FIX: งานที่ cancel ไปกล่องล่างเสมอ
+    if (b.status === "cancelled") {
+      past.push(b);
+      return;
+    }
+
+    // งานปกติ แยกตามวันที่
     if (b.booking_date >= today) active.push(b);
     else past.push(b);
   });
@@ -205,11 +212,12 @@ function renderHistory(bookings) {
     <h3>งานที่กำลังดำเนินการ</h3>
     ${active.length ? active.map(renderBooking).join("") : "<div>ไม่มีงาน</div>"}
     <hr style="margin:16px 0">
-    <h3>งานที่ผ่านมาแล้ว</h3>
+    <h3>งานที่ผ่านมาแล้ว / ยกเลิก</h3>
     ${past.length ? past.map(renderBooking).join("") : "<div>ไม่มีงาน</div>"}
     <button class="secondary" onclick="closeHistory()">ปิด</button>
   `;
 }
+
 
 function renderBooking(b) {
   return `
