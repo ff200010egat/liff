@@ -25,12 +25,27 @@ input, select {
 }
 
 #formBox { display:none; }
+#loginWarn {
+  display:none;
+  padding:16px;
+  background:#fff3cd;
+  border:1px solid #ffeeba;
+  border-radius:12px;
+  margin-bottom:16px;
+  font-size:18px;
+}
 </style>
 </head>
 
 <body>
 
 <h2>ระบบจองรถ หก-มน.</h2>
+
+<div id="loginWarn">
+  กรุณาเปิดหน้านี้ผ่านแอป LINE เท่านั้น<br>
+  (ไม่รองรับการใช้งานผ่าน Web Browser)
+</div>
+
 <div id="username"></div>
 <div id="role"></div>
 
@@ -69,7 +84,17 @@ let mobile = "";
 
 async function init() {
   await liff.init({ liffId:"2008934745-qU0fPztf" });
-  if (!liff.isLoggedIn()) liff.login();
+
+  // ✅ ADD: browser guard
+  if (!liff.isInClient()) {
+    document.getElementById("loginWarn").style.display = "block";
+    return;
+  }
+
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
+  }
 
   const p = await liff.getProfile();
   userId = p.userId;
@@ -124,36 +149,20 @@ function closeForm() {
   document.getElementById("formBox").style.display="none";
 }
 
-/* ================= VALIDATION ================= */
 function isEmpty(v) {
   return !v || v.toString().trim() === "";
 }
 
 async function submitBooking() {
-  // ---- VALIDATE ----
-  if (isEmpty(booking_date.value)) {
-    return alert("กรุณาเลือกวันที่จอง");
-  }
-  if (isEmpty(booking_time.value)) {
-    return alert("กรุณาเลือกเวลา");
-  }
-  if (isEmpty(vehicle_type.value)) {
-    return alert("กรุณาเลือกประเภทรถ");
-  }
-  if (isEmpty(passenger_count.value) || passenger_count.value <= 0) {
+  if (isEmpty(booking_date.value)) return alert("กรุณาเลือกวันที่จอง");
+  if (isEmpty(booking_time.value)) return alert("กรุณาเลือกเวลา");
+  if (isEmpty(vehicle_type.value)) return alert("กรุณาเลือกประเภทรถ");
+  if (isEmpty(passenger_count.value) || passenger_count.value <= 0)
     return alert("กรุณาระบุจำนวนผู้โดยสาร");
-  }
-  if (isEmpty(pickup_location.value)) {
-    return alert("กรุณาระบุจุดรับ");
-  }
-  if (isEmpty(dropoff_location.value)) {
-    return alert("กรุณาระบุจุดส่ง");
-  }
-  if (isEmpty(contact_mobile.value)) {
-    return alert("กรุณาระบุเบอร์ติดต่อ");
-  }
+  if (isEmpty(pickup_location.value)) return alert("กรุณาระบุจุดรับ");
+  if (isEmpty(dropoff_location.value)) return alert("กรุณาระบุจุดส่ง");
+  if (isEmpty(contact_mobile.value)) return alert("กรุณาระบุเบอร์ติดต่อ");
 
-  // ---- SEND ----
   const res = await fetch(ENDPOINT,{
     method:"POST",
     body:JSON.stringify({
