@@ -46,7 +46,7 @@ input, select {
   <input type="time" id="booking_time">
 
   <select id="vehicle_type">
-    <option value="ไม่ระบุ">ไม่ระบุ</option>
+    <option value="">-- เลือกรถ --</option>
     <option value="รถเก๋ง">รถเก๋ง</option>
     <option value="รถกระบะ">รถกระบะ</option>
     <option value="รถตู้">รถตู้</option>
@@ -62,7 +62,7 @@ input, select {
 </div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbx2Wgb3m7XOrkAIbMCLPuW1p7YQBaedv7T9R85zUY_m-YzYeyKrnrrERWxlKnfSDBXPow/exec";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbwwcd31q23WGmuinxjV3QDLAuVh0j4DQcuazjIdYKfdc4Ex_OWqabJEBvkD5-WnUKnqFQ/exec";
 let userId = "";
 let role = "user";
 let mobile = "";
@@ -98,12 +98,11 @@ function render() {
   driverBox.innerHTML = "";
 
   if (role === "user") {
-    /* ===== USER UI ===== */
     mainBtn.innerText = "จองรถพร้อมคนขับ";
     mainBtn.onclick = showForm;
 
     subBtn.innerText = "ดูประวัติการจอง";
-    subBtn.onclick = () => alert("TODO: ประวัติการจอง");
+    subBtn.onclick = () => alert("TODO");
 
     driverBox.innerHTML = `
       <button class="secondary" onclick="showDriverRegister()">
@@ -111,38 +110,9 @@ function render() {
       </button>
     `;
   } else {
-    /* ===== DRIVER UI ===== */
     mainBtn.innerText = "งานทั้งหมด";
-    mainBtn.onclick = () => alert("TODO: งานทั้งหมด");
-
-    subBtn.innerText = "ดูประวัติงาน (เดือนนี้)";
-    subBtn.onclick = () => alert("TODO: ประวัติงาน");
-
-    driverBox.innerHTML = `
-      <div style="margin-bottom:8px">
-        เบอร์โทรติดต่อ: <strong>${mobile}</strong>
-      </div>
-      <button class="danger" onclick="cancelDriver()">
-        ยกเลิกสถานะพนักงานขับรถ
-      </button>
-    `;
+    subBtn.innerText = "ดูประวัติงาน";
   }
-}
-
-function showDriverRegister() {
-  const phone = prompt("กรุณากรอกเบอร์โทรสำหรับติดต่อ");
-  if (!phone) return;
-
-  fetch(ENDPOINT,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"register_driver",
-      line_user_id:userId,
-      mobile_phone:phone
-    })
-  }).then(r=>r.json()).then(res=>{
-    if(res.success) location.reload();
-  });
 }
 
 function showForm() {
@@ -154,7 +124,36 @@ function closeForm() {
   document.getElementById("formBox").style.display="none";
 }
 
+/* ================= VALIDATION ================= */
+function isEmpty(v) {
+  return !v || v.toString().trim() === "";
+}
+
 async function submitBooking() {
+  // ---- VALIDATE ----
+  if (isEmpty(booking_date.value)) {
+    return alert("กรุณาเลือกวันที่จอง");
+  }
+  if (isEmpty(booking_time.value)) {
+    return alert("กรุณาเลือกเวลา");
+  }
+  if (isEmpty(vehicle_type.value)) {
+    return alert("กรุณาเลือกประเภทรถ");
+  }
+  if (isEmpty(passenger_count.value) || passenger_count.value <= 0) {
+    return alert("กรุณาระบุจำนวนผู้โดยสาร");
+  }
+  if (isEmpty(pickup_location.value)) {
+    return alert("กรุณาระบุจุดรับ");
+  }
+  if (isEmpty(dropoff_location.value)) {
+    return alert("กรุณาระบุจุดส่ง");
+  }
+  if (isEmpty(contact_mobile.value)) {
+    return alert("กรุณาระบุเบอร์ติดต่อ");
+  }
+
+  // ---- SEND ----
   const res = await fetch(ENDPOINT,{
     method:"POST",
     body:JSON.stringify({
@@ -164,9 +163,9 @@ async function submitBooking() {
       booking_time:booking_time.value,
       vehicle_type:vehicle_type.value,
       passenger_count:passenger_count.value,
-      pickup_location:pickup_location.value,
-      dropoff_location:dropoff_location.value,
-      contact_mobile:contact_mobile.value
+      pickup_location:pickup_location.value.trim(),
+      dropoff_location:dropoff_location.value.trim(),
+      contact_mobile:contact_mobile.value.trim()
     })
   }).then(r=>r.json());
 
@@ -176,20 +175,6 @@ async function submitBooking() {
   } else {
     alert("เกิดข้อผิดพลาด");
   }
-}
-
-async function cancelDriver() {
-  if (!confirm("ยืนยันยกเลิกสถานะพนักงานขับรถ?")) return;
-
-  const res = await fetch(ENDPOINT,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"cancel_driver",
-      line_user_id:userId
-    })
-  }).then(r=>r.json());
-
-  if (res.success) location.reload();
 }
 
 init();
