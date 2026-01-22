@@ -4,18 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
 <style>
-body { font-family: system-ui; padding:16px; background:#fafafa; }
-button { width:100%; padding:16px; font-size:18px; margin-bottom:10px; border-radius:10px; }
-.primary{background:#0a7cff;color:#fff;}
-.secondary{background:#e0e0e0;}
-.danger{background:#e53935;color:#fff;}
-input,select{width:100%;padding:12px;margin-bottom:8px;}
-#formBox,#historyBox{display:none;}
+body { font-family: system-ui; padding:16px; }
+button { width:100%; padding:16px; margin-bottom:10px; }
+.primary{background:#0a7cff;color:#fff}
+.secondary{background:#e0e0e0}
+.danger{background:#e53935;color:#fff}
+input,select{width:100%;padding:12px;margin-bottom:8px}
+#formBox,#historyBox{display:none}
 </style>
 </head>
-
 <body>
 
 <h2>ระบบจองรถ</h2>
@@ -27,92 +25,93 @@ input,select{width:100%;padding:12px;margin-bottom:8px;}
 <div id="driverBox"></div>
 
 <div id="formBox">
+  <h3>ฟอร์มจอง</h3>
   <input type="date" id="booking_date">
   <input type="time" id="booking_time">
   <input type="text" id="pickup_location" placeholder="จุดรับ">
   <input type="text" id="dropoff_location" placeholder="จุดส่ง">
   <input type="text" id="contact_mobile" placeholder="เบอร์ติดต่อ">
-  <button class="primary" onclick="submitBooking()">บันทึก</button>
+  <button onclick="submitBooking()" class="primary">บันทึก</button>
 </div>
 
 <div id="historyBox"></div>
 
 <script>
-const ENDPOINT="https://script.google.com/macros/s/AKfycbxMURRIJKcBR7oK5eBTqn7xpUlKQsmNivHu6quI1ltbx-C3Kt8YD9E5WfDs9Vy1LGGC_A/exec";
-let userId="",role="",displayName="";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbwdQH6tF0IV5KCrmOrA2bKe9kJKJkqHR1upjVR9q_ixgvgI7zxeTFVVlGBS9p9BH2sRgA/exec";
+let userId="", role="", mobile="";
 
 async function init(){
-  await liff.init({ liffId:"2008934745-qU0fPztf" });
+  await liff.init({liffId:"2008934745-qU0fPztf"});
   if(!liff.isLoggedIn()) liff.login();
-  const p=await liff.getProfile();
-  userId=p.userId; displayName=p.displayName;
-  document.getElementById("username").innerText=displayName;
+  const p = await liff.getProfile();
+  userId = p.userId;
+  username.innerText = p.displayName;
 
-  const res=await fetch(ENDPOINT,{method:"POST",body:JSON.stringify({
-    action:"auto_register",line_user_id:userId,display_name:displayName
-  })}).then(r=>r.json());
-  role=res.role;
+  const r = await fetch(ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"auto_register",
+      line_user_id:userId,
+      display_name:p.displayName
+    })
+  }).then(r=>r.json());
+
+  role = r.role;
+  mobile = r.mobile||"";
   render();
 }
 
 function render(){
-  document.getElementById("role").innerText=role;
+  role === "driver"
+    ? mainBtn.innerText="กรอกงานเอง"
+    : mainBtn.innerText="จองรถ";
+
+  mainBtn.onclick = ()=>{
+    formBox.style.display="block";
+    contact_mobile.value = mobile;
+  };
+
+  subBtn.innerText="ประวัติ";
+  subBtn.onclick = ()=>alert("ดึงจาก sheet ต่อได้");
+
   if(role==="user"){
-    mainBtn.innerText="จองรถ";
-    mainBtn.onclick=()=>formBox.style.display="block";
-    subBtn.innerText="ประวัติการจอง";
-    subBtn.onclick=loadHistory;
-  }else{
-    mainBtn.innerText="กรอกงานเอง";
-    mainBtn.onclick=submitDriverJob;
+    driverBox.innerHTML=`
+      <button class="secondary" onclick="registerDriver()">ลงทะเบียนเป็นพนักงานขับรถ</button>`;
   }
 }
 
+async function registerDriver(){
+  const m = prompt("เบอร์โทร:");
+  if(!m) return;
+  const r = await fetch(ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"register_driver",
+      line_user_id:userId,
+      mobile_phone:m
+    })
+  }).then(r=>r.json());
+
+  if(r.success){ alert("สำเร็จ"); location.reload(); }
+  else alert("เบอร์ไม่ถูกต้อง");
+}
+
 async function submitBooking(){
-  await fetch(ENDPOINT,{method:"POST",body:JSON.stringify({
-    action:"create_booking",
-    line_user_id:userId,
-    booking_date:booking_date.value,
-    booking_time:booking_time.value,
-    pickup_location:pickup_location.value,
-    dropoff_location:dropoff_location.value,
-    contact_mobile:contact_mobile.value
-  })});
-  alert("บันทึกแล้ว");
-  location.reload();
-}
+  const r = await fetch(ENDPOINT,{
+    method:"POST",
+    body:JSON.stringify({
+      action: role==="driver"?"driver_create_booking":"create_booking",
+      line_user_id:userId,
+      driver_name: username.innerText,
+      booking_date:booking_date.value,
+      booking_time:booking_time.value,
+      pickup_location:pickup_location.value,
+      dropoff_location:dropoff_location.value,
+      contact_mobile:contact_mobile.value
+    })
+  }).then(r=>r.json());
 
-async function submitDriverJob(){
-  await fetch(ENDPOINT,{method:"POST",body:JSON.stringify({
-    action:"driver_create_booking",
-    driver_name:displayName,
-    booking_date:booking_date.value,
-    booking_time:booking_time.value,
-    pickup_location:pickup_location.value,
-    dropoff_location:dropoff_location.value,
-    contact_mobile:contact_mobile.value
-  })});
-  alert("บันทึกงานแล้ว");
-  location.reload();
-}
-
-async function loadHistory(){
-  const list=await fetch(ENDPOINT,{method:"POST",body:JSON.stringify({
-    action:"list_user_bookings",line_user_id:userId
-  })}).then(r=>r.json());
-  historyBox.innerHTML=list.map(b=>
-    `<div>${b.date} ${b.time} ${b.dropoff} (${b.status})
-    ${b.status==="pending"?`<button onclick="cancel('${b.booking_id}')">ยกเลิก</button>`:""}
-    </div>`
-  ).join("");
-  historyBox.style.display="block";
-}
-
-async function cancel(id){
-  await fetch(ENDPOINT,{method:"POST",body:JSON.stringify({
-    action:"cancel_booking",booking_id:id,line_user_id:userId
-  })});
-  loadHistory();
+  if(r.success){ alert("บันทึกแล้ว"); location.reload(); }
 }
 
 init();
