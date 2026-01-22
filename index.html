@@ -247,13 +247,16 @@ async function cancelDriverRole() {
     })
   }).then(r=>r.json());
 
-  if (res.success) {
+  console.log("cancel_driver response:", res); // 🔍 debug
+
+  if (res.success === true || res.status === "success") {
     alert("ยกเลิกบทบาทเรียบร้อย");
     location.reload();
   } else {
     alert("ไม่สามารถยกเลิกได้");
   }
 }
+
 
 init();
 </script>
