@@ -62,7 +62,7 @@ input, select {
 </div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycby51Kk8fhSc3y46ruMCyv-rEG__fl7pkqnRIOKkB8luWKhSAl7jtYUvkroxrovVTiMC9A/exec";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbx2Wgb3m7XOrkAIbMCLPuW1p7YQBaedv7T9R85zUY_m-YzYeyKrnrrERWxlKnfSDBXPow/exec";
 let userId = "";
 let role = "user";
 let mobile = "";
@@ -158,8 +158,9 @@ async function submitBooking() {
   const res = await fetch(ENDPOINT,{
     method:"POST",
     body:JSON.stringify({
-      action:"create_booking",
+        action:"create_booking",
       line_user_id:userId,
+      display_name: profile.displayName, // ✅ NEW
       booking_date:booking_date.value,
       booking_time:booking_time.value,
       vehicle_type:vehicle_type.value,
