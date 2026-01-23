@@ -19,7 +19,10 @@
   .success { background:#28a745; color:#fff; }
   .danger { background:#fff1f0; color:#ff4d4f; border:1px solid #ffccc7; padding:10px; font-size:14px; }
   
-  input, select { width:100%; padding:12px; box-sizing: border-box; font-size:16px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd; }
+  /* ปรับแต่ง Label และ Input */
+  label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #555; }
+  input, select { width:100%; padding:12px; box-sizing: border-box; font-size:16px; margin-bottom:12px; border-radius:8px; border:1px solid #ddd; background: #fff; }
+  
   #formBox { display:none; }
   .val-text { font-size:15px; margin-bottom:5px; line-height: 1.4; }
 
@@ -43,23 +46,33 @@
 
   <div id="actionArea">
     <button id="bookBtn" class="primary">...</button>
-    <div id="roleToggleArea"></div> </div>
+    <div id="roleToggleArea"></div> 
+  </div>
 
   <div id="formBox" class="card">
-    <h3 style="margin-top:0;">กรอกข้อมูล</h3>
+    <h3 style="margin-top:0; color:#0a7cff;">กรอกรายละเอียดงาน</h3>
+    
+    <label>📅 วันที่เดินทาง</label>
     <input type="date" id="booking_date">
+    
+    <label>⏰ เวลาเดินทาง</label>
     <input type="time" id="booking_time">
+    
+    <label>🚗 ประเภทรถ</label>
     <select id="vehicle_type">
       <option value="ไม่ระบุ">ไม่ระบุ</option>
       <option value="รถเก๋ง">รถเก๋ง</option>
       <option value="รถกระบะ">รถกระบะ</option>
       <option value="รถตู้">รถตู้</option>
     </select>
+    
+    <label>👥 ข้อมูลการเดินทาง</label>
     <input type="number" id="passenger_count" placeholder="จำนวนผู้โดยสาร">
-    <input type="text" id="pickup_location" placeholder="จุดรับ">
-    <input type="text" id="dropoff_location" placeholder="จุดส่ง">
+    <input type="text" id="pickup_location" placeholder="จุดรับ (ต้นทาง)">
+    <input type="text" id="dropoff_location" placeholder="จุดส่ง (ปลายทาง)">
     <input type="text" id="contact_mobile" placeholder="เบอร์โทรติดต่อ">
-    <button class="primary" onclick="submitBooking()">บันทึก</button>
+    
+    <button class="primary" onclick="submitBooking()">บันทึกข้อมูล</button>
     <button class="secondary" onclick="closeForm()">ยกเลิก</button>
   </div>
 
@@ -67,7 +80,7 @@
 </div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbytSVSnoqZmbCKqUvg7Gnzs_9ofe82jvI2BdZ85_kLVC1H-NyMSAZpVzqOTUOWCUjhbDw/exec"; 
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbxiRiKOIl8ZS6QRFAhiCy5FJe6OJ4Kke5CD8z24iYNzWHRtyey6L9B6g0NGtFSffsFQTw/exec"; 
 let userId = "", role = "", mobile = "", displayName = "";
 
 function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
@@ -103,7 +116,7 @@ function renderUI() {
   const roleToggleArea = document.getElementById("roleToggleArea");
   document.getElementById("roleBadge").innerText = (role === "driver") ? "🔓 พนักงานขับรถ" : "👤 ผู้ใช้งานทั่วไป";
   
-  bookBtn.innerText = (role === "driver") ? "กรอกข้อมูลงานรับเอง" : "จองรถพร้อมคนขับ";
+  bookBtn.innerText = (role === "driver") ? "➕ เพิ่มงานใหม่ (รับเอง)" : "📅 จองรถล่วงหน้า";
   bookBtn.onclick = () => { document.getElementById("formBox").style.display = "block"; window.scrollTo(0,0); };
   
   roleToggleArea.innerHTML = (role === "driver") 
@@ -137,14 +150,37 @@ async function showHistory() {
   toggleLoad(false);
 }
 
-// Actions (Added toggleLoad to all)
 async function cancelBooking(id) { if(confirm("ยกเลิกงานนี้?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_booking", booking_id: id }) }); await showHistory(); } }
+
 async function submitBooking() {
+  const bDate = document.getElementById("booking_date").value;
+  const bTime = document.getElementById("booking_time").value;
+  if(!bDate || !bTime) { alert("กรุณาระบุวันและเวลา"); return; }
+
   toggleLoad(true);
-  const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: role === "driver" ? "driver_create_booking" : "create_booking", line_user_id: userId, display_name: displayName, booking_date: document.getElementById("booking_date").value, booking_time: document.getElementById("booking_time").value, vehicle_type: document.getElementById("vehicle_type").value, passenger_count: document.getElementById("passenger_count").value, pickup_location: document.getElementById("pickup_location").value, dropoff_location: document.getElementById("dropoff_location").value, contact_mobile: document.getElementById("contact_mobile").value }) }).then(r => r.json());
-  if (res.success) { document.getElementById("formBox").style.display = "none"; await showHistory(); }
+  const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ 
+    action: role === "driver" ? "driver_create_booking" : "create_booking", 
+    line_user_id: userId, 
+    display_name: displayName, 
+    booking_date: bDate, 
+    booking_time: bTime, 
+    vehicle_type: document.getElementById("vehicle_type").value, 
+    passenger_count: document.getElementById("passenger_count").value, 
+    pickup_location: document.getElementById("pickup_location").value, 
+    dropoff_location: document.getElementById("dropoff_location").value, 
+    contact_mobile: document.getElementById("contact_mobile").value 
+  }) }).then(r => r.json());
+  
+  if (res.success) { 
+    document.getElementById("formBox").style.display = "none"; 
+    // Reset Form
+    document.getElementById("booking_date").value = "";
+    document.getElementById("booking_time").value = "";
+    await showHistory(); 
+  }
   toggleLoad(false);
 }
+
 async function registerDriver() { const p = prompt("เบอร์โทรศัพท์ของคุณ:"); if(p) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "register_driver", line_user_id: userId, mobile_phone: p }) }); location.reload(); } }
 async function cancelDriverRole() { if(confirm("ยกเลิกบทบาท?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_driver", line_user_id: userId }) }); location.reload(); } }
 async function acceptJob(id) { if(confirm("ยืนยันรับงาน?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "accept_job", booking_id: id, line_user_id: userId, display_name: displayName }) }); await showHistory(); } }
