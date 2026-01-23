@@ -7,7 +7,7 @@
 <style>
   body { font-family: system-ui, -apple-system, sans-serif; padding:16px; background:#f0f2f5; color:#333; margin:0; }
   .card { background:#fff; padding:16px; border-radius:12px; margin-bottom:12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); border:1px solid #eee; }
-  .card.past-job { opacity: 0.6; background: #f8f9fa; filter: grayscale(0.5); border: 1px dashed #ccc; }
+  .card.past-job { opacity: 0.6; background: #f8f9fa; filter: grayscale(0.5); }
   h2 { font-size:22px; color:#0a7cff; margin-bottom:5px; }
   #username { font-weight:bold; font-size:18px; }
   #roleBadge { display:inline-block; padding:3px 10px; border-radius:15px; background:#e4e6eb; font-size:12px; margin-bottom:15px; font-weight:600; }
@@ -21,10 +21,10 @@
   input, select { width:100%; padding:12px; box-sizing: border-box; font-size:16px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd; }
   #formBox { display:none; }
   .val-text { font-size:15px; margin-bottom:5px; line-height: 1.4; }
-  .label-text { font-size:11px; color:#8c939d; font-weight: bold; }
 
-  #loading { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:9999; justify-content:center; align-items:center; flex-direction:column; }
-  .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #0a7cff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+  /* Animation Loading Overlay */
+  #loading { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; }
+  .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #0a7cff; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 </style>
 </head>
@@ -32,7 +32,7 @@
 
 <div id="loading">
   <div class="spinner"></div>
-  <p style="margin-top:10px; font-weight:bold; color:#0a7cff;">กำลังประมวลผล...</p>
+  <p style="margin-top:12px; font-weight:bold; color:#0a7cff;">กำลังโหลดข้อมูล...</p>
 </div>
 
 <div style="max-width: 500px; margin: auto;">
@@ -42,16 +42,14 @@
 
   <div id="actionArea">
     <button id="bookBtn" class="primary">...</button>
-    <div id="roleToggleArea"></div>
-  </div>
+    <div id="roleToggleArea"></div> </div>
 
   <div id="formBox" class="card">
-    <h3 style="margin-top:0;">กรอกข้อมูลการเดินทาง</h3>
+    <h3 style="margin-top:0;">กรอกข้อมูล</h3>
     <input type="date" id="booking_date">
     <input type="time" id="booking_time">
     <select id="vehicle_type">
-      <option value="ไม่ระบุ">เลือกประเภทรถ</option>
-      <option value="ไม่ระบุ">ไม่ระบุ</option>
+      <option value="ไม่ระบุ">ไม่ระบุ (ตัวเลือกแรก)</option>
       <option value="รถเก๋ง">รถเก๋ง</option>
       <option value="รถกระบะ">รถกระบะ</option>
       <option value="รถตู้">รถตู้</option>
@@ -60,7 +58,7 @@
     <input type="text" id="pickup_location" placeholder="จุดรับ">
     <input type="text" id="dropoff_location" placeholder="จุดส่ง">
     <input type="text" id="contact_mobile" placeholder="เบอร์โทรติดต่อ">
-    <button class="primary" onclick="submitBooking()">บันทึกข้อมูล</button>
+    <button class="primary" onclick="submitBooking()">บันทึก</button>
     <button class="secondary" onclick="closeForm()">ยกเลิก</button>
   </div>
 
@@ -68,28 +66,17 @@
 </div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbyBeYahEZBZlC3_h8Fzyoit6VQw4sYaWDkz1aY47MAjJGaVeQikPy-0fET7fFZ6n5hVZA/exec"; 
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbwo1xNZMpafsCtVIXO3Su-qSiIXjzzPdTQKkKzk5X2LR5ntnuloSwpWWIJSeC5HZhHWyw/exec"; 
 let userId = "", role = "", mobile = "", displayName = "";
 
 function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
 
-// ฟังก์ชันแปลงวันที่/เวลาไทย (แก้ bug timezone)
 function formatThaiDateTime(dateVal, timeVal) {
   if (!dateVal) return "-";
   const d = new Date(dateVal);
   const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
   const dateStr = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
-  
-  let timeStr = "";
-  if (timeVal) {
-    const t = new Date(timeVal);
-    // ตรวจสอบว่าเป็น Date Object จาก Google Sheet หรือ String ธรรมดา
-    if (!isNaN(t.getTime()) && String(timeVal).includes("T")) {
-      timeStr = t.getHours().toString().padStart(2, '0') + ":" + t.getMinutes().toString().padStart(2, '0');
-    } else {
-      timeStr = String(timeVal).substring(0, 5);
-    }
-  }
+  let timeStr = String(timeVal).includes("T") ? new Date(timeVal).getHours().toString().padStart(2,'0')+":"+new Date(timeVal).getMinutes().toString().padStart(2,'0') : String(timeVal).substring(0,5);
   return dateStr + " | " + timeStr + " น.";
 }
 
@@ -103,9 +90,9 @@ async function init() {
     document.getElementById("username").innerText = displayName;
 
     const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "auto_register", line_user_id: userId, display_name: displayName }) }).then(r => r.json());
-    role = res.role; mobile = res.mobile || "";
+    role = res.role;
     renderUI();
-    showHistory();
+    await showHistory();
   } catch (err) { alert(err); }
   toggleLoad(false);
 }
@@ -115,14 +102,12 @@ function renderUI() {
   const roleToggleArea = document.getElementById("roleToggleArea");
   document.getElementById("roleBadge").innerText = (role === "driver") ? "🔓 พนักงานขับรถ" : "👤 ผู้ใช้งานทั่วไป";
   
-  if (role === "driver") {
-    bookBtn.innerText = "กรอกข้อมูลงานรับเอง";
-    roleToggleArea.innerHTML = `<button class="secondary" onclick="cancelDriverRole()">ยกเลิกบทบาทพนักงานขับรถ</button>`;
-  } else {
-    bookBtn.innerText = "จองรถพร้อมคนขับ";
-    roleToggleArea.innerHTML = `<button class="secondary" onclick="registerDriver()">สมัครเป็นพนักงานขับรถ</button>`;
-  }
+  bookBtn.innerText = (role === "driver") ? "กรอกข้อมูลงานรับเอง" : "จองรถพร้อมคนขับ";
   bookBtn.onclick = () => { document.getElementById("formBox").style.display = "block"; window.scrollTo(0,0); };
+  
+  roleToggleArea.innerHTML = (role === "driver") 
+    ? `<button class="secondary" onclick="cancelDriverRole()">ยกเลิกบทบาทพนักงานขับรถ</button>`
+    : `<button class="secondary" onclick="registerDriver()">สมัครเป็นพนักงานขับรถ</button>`;
 }
 
 async function showHistory() {
@@ -134,87 +119,34 @@ async function showHistory() {
   let filtered = (res.data || []).filter(b => (role === "driver") ? (b.booked_by === userId || b.driver_line_id === userId || b.status === "pending") : (b.booked_by === userId));
 
   hBox.innerHTML = "<h3 style='margin: 20px 0 10px 0;'>รายการงาน</h3>";
-  
-  if (filtered.length === 0) {
-    hBox.innerHTML += "<p style='text-align:center; color:#999; margin-top:20px;'>ไม่พบข้อมูล</p>";
-  } else {
-    hBox.innerHTML += filtered.reverse().map(b => {
-      const bDate = new Date(b.booking_date).setHours(0,0,0,0);
-      const isPast = bDate < nowDay;
-      const isCancelled = b.status === "cancelled";
-      const isOwner = (b.booked_by === userId || b.driver_line_id === userId);
-      
-      return `
-        <div class="card ${ (isPast || isCancelled) ? 'past-job' : '' }">
-          <div class="val-text"><b>${b.pickup_location} ➡️ ${b.dropoff_location}</b></div>
-          <div class="val-text">📅 ${formatThaiDateTime(b.booking_date, b.booking_time)}</div>
-          <div class="val-text">👤 ผู้จอง: ${b.user_display_name} | 🚗 ${b.vehicle_type}</div>
-          <div class="val-text">
-            สถานะ: <span style="font-weight:bold; color:${b.status === 'pending' ? '#f39c12' : '#28a745'}">
-              ${b.status.toUpperCase()} ${b.driver_name ? '('+b.driver_name+')' : ''}
-            </span>
-          </div>
-          ${(role === "driver" && b.status === "pending") ? `<button class="success" onclick="acceptJob('${b.booking_id}')">✅ รับงานนี้</button>` : ""}
-          ${(isOwner && !isCancelled) ? `<button class="danger" onclick="cancelBooking('${b.booking_id}')">❌ ยกเลิกงานนี้</button>` : ""}
-        </div>
-      `;
-    }).join("");
-  }
+  hBox.innerHTML += filtered.reverse().map(b => {
+    const isPast = new Date(b.booking_date).setHours(0,0,0,0) < nowDay;
+    const isCancelled = b.status === "cancelled";
+    return `
+      <div class="card ${ (isPast || isCancelled) ? 'past-job' : '' }">
+        <div class="val-text"><b>${b.pickup_location} ➡️ ${b.dropoff_location}</b></div>
+        <div class="val-text">📅 ${formatThaiDateTime(b.booking_date, b.booking_time)}</div>
+        <div class="val-text">👤 จองโดย: ${b.user_display_name} | 🚗 ${b.vehicle_type}</div>
+        <div class="val-text">สถานะ: <span style="font-weight:bold; color:${b.status === 'pending' ? '#f39c12' : '#28a745'}">${b.status.toUpperCase()} ${b.driver_name ? '('+b.driver_name+')' : ''}</span></div>
+        ${(role === "driver" && b.status === "pending") ? `<button class="success" onclick="acceptJob('${b.booking_id}')">✅ รับงานนี้</button>` : ""}
+        ${((b.booked_by === userId || b.driver_line_id === userId) && !isCancelled) ? `<button class="danger" onclick="cancelBooking('${b.booking_id}')">❌ ยกเลิกงานนี้</button>` : ""}
+      </div>
+    `;
+  }).join("");
   toggleLoad(false);
 }
 
-async function cancelBooking(id) {
-  if (!confirm("คุณต้องการยกเลิกงานนี้ใช่หรือไม่?")) return;
-  toggleLoad(true);
-  const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_booking", booking_id: id }) }).then(r => r.json());
-  if (res.success) showHistory();
-  toggleLoad(false);
-}
-
+// Actions (Added toggleLoad to all)
+async function cancelBooking(id) { if(confirm("ยกเลิกงานนี้?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_booking", booking_id: id }) }); await showHistory(); } }
 async function submitBooking() {
   toggleLoad(true);
-  const res = await fetch(ENDPOINT, {
-    method: "POST",
-    body: JSON.stringify({
-      action: role === "driver" ? "driver_create_booking" : "create_booking",
-      line_user_id: userId, display_name: displayName,
-      booking_date: document.getElementById("booking_date").value,
-      booking_time: document.getElementById("booking_time").value,
-      vehicle_type: document.getElementById("vehicle_type").value,
-      passenger_count: document.getElementById("passenger_count").value,
-      pickup_location: document.getElementById("pickup_location").value,
-      dropoff_location: document.getElementById("dropoff_location").value,
-      contact_mobile: document.getElementById("contact_mobile").value
-    })
-  }).then(r => r.json());
-  if (res.success) { document.getElementById("formBox").style.display = "none"; showHistory(); }
+  const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: role === "driver" ? "driver_create_booking" : "create_booking", line_user_id: userId, display_name: displayName, booking_date: document.getElementById("booking_date").value, booking_time: document.getElementById("booking_time").value, vehicle_type: document.getElementById("vehicle_type").value, passenger_count: document.getElementById("passenger_count").value, pickup_location: document.getElementById("pickup_location").value, dropoff_location: document.getElementById("dropoff_location").value, contact_mobile: document.getElementById("contact_mobile").value }) }).then(r => r.json());
+  if (res.success) { document.getElementById("formBox").style.display = "none"; await showHistory(); }
   toggleLoad(false);
 }
-
-async function registerDriver() {
-  const phone = prompt("กรุณากรอกเบอร์โทรศัพท์ของคุณ:");
-  if (!phone) return;
-  toggleLoad(true);
-  await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "register_driver", line_user_id: userId, mobile_phone: phone }) });
-  location.reload();
-}
-
-async function cancelDriverRole() {
-  if (confirm("ยืนยันยกเลิกบทบาทพนักงานขับรถ?")) {
-    toggleLoad(true);
-    await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_driver", line_user_id: userId }) });
-    location.reload();
-  }
-}
-
-async function acceptJob(id) {
-  if (confirm("ยืนยันรับงาน?")) {
-    toggleLoad(true);
-    await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "accept_job", booking_id: id, line_user_id: userId, display_name: displayName }) });
-    showHistory();
-  }
-}
-
+async function registerDriver() { const p = prompt("เบอร์โทรศัพท์ของคุณ:"); if(p) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "register_driver", line_user_id: userId, mobile_phone: p }) }); location.reload(); } }
+async function cancelDriverRole() { if(confirm("ยกเลิกบทบาท?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_driver", line_user_id: userId }) }); location.reload(); } }
+async function acceptJob(id) { if(confirm("ยืนยันรับงาน?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "accept_job", booking_id: id, line_user_id: userId, display_name: displayName }) }); await showHistory(); } }
 function closeForm() { document.getElementById("formBox").style.display = "none"; }
 
 init();
