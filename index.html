@@ -120,7 +120,8 @@ function renderUI() {
   bookBtn.onclick = () => { document.getElementById("formBox").style.display = "block"; window.scrollTo(0,0); };
   
   roleToggleArea.innerHTML = (role === "driver") 
-    ? `<button class="secondary" onclick="cancelDriverRole()">ยกเลิกบทบาทพนักงานขับรถ</button>`
+    ? `<button class="secondary" onclick="editDriverMobile()">📞 แก้ไขเบอร์โทรคนขับ</button>
+       <button class="secondary" style="background:#fff1f0; color:#ff4d4f; border:1px solid #ffccc7;" onclick="cancelDriverRole()">ยกเลิกบทบาทพนักงานขับรถ</button>`
     : `<button class="secondary" onclick="registerDriver()">สมัครเป็นพนักงานขับรถ</button>`;
 }
 
@@ -182,6 +183,7 @@ async function submitBooking() {
 }
 
 async function registerDriver() { const p = prompt("เบอร์โทรศัพท์ของคุณ:"); if(p) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "register_driver", line_user_id: userId, mobile_phone: p }) }); location.reload(); } }
+async function editDriverMobile() { const p = prompt("ระบุเบอร์โทรศัพท์ใหม่ของคุณ:"); if(p) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "register_driver", line_user_id: userId, mobile_phone: p }) }); alert("แก้ไขเบอร์โทรศัพท์เรียบร้อยแล้ว"); location.reload(); } }
 async function cancelDriverRole() { if(confirm("ยกเลิกบทบาท?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_driver", line_user_id: userId }) }); location.reload(); } }
 async function acceptJob(id) { if(confirm("ยืนยันรับงาน?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "accept_job", booking_id: id, line_user_id: userId, display_name: displayName }) }); await showHistory(); } }
 function closeForm() { document.getElementById("formBox").style.display = "none"; }
