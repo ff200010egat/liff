@@ -11,7 +11,6 @@
   .card.past-job { opacity: 0.6; background: #f8f9fa; filter: grayscale(0.5); }
   h2 { font-size:22px; color:#0a7cff; margin-bottom:5px; }
   
-  /* เพิ่มส่วนสไตล์รูปโปรไฟล์ */
   .profile-container { display: flex; align-items: center; gap: 12px; margin-bottom: 5px; }
   #profileImg { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); object-fit: cover; display: none; }
   
@@ -24,14 +23,12 @@
   .success { background:#28a745; color:#fff; }
   .danger { background:#fff1f0; color:#ff4d4f; border:1px solid #ffccc7; padding:10px; font-size:14px; }
   
-  /* ปรับแต่ง Label และ Input */
   label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #555; }
   input, select { width:100%; padding:12px; box-sizing: border-box; font-size:16px; margin-bottom:12px; border-radius:8px; border:1px solid #ddd; background: #fff; }
   
   #formBox { display:none; }
   .val-text { font-size:15px; margin-bottom:5px; line-height: 1.4; }
 
-  /* Animation Loading Overlay */
   #loading { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; }
   .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #0a7cff; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -81,6 +78,21 @@
     <input type="number" id="passenger_count" placeholder="จำนวนผู้โดยสาร">
     <input type="text" id="pickup_location" placeholder="จุดรับ (ต้นทาง)">
     <input type="text" id="dropoff_location" placeholder="จุดส่ง (ปลายทาง)">
+    
+    <label>⏱ ระยะเวลาใช้งานโดยประมาณ</label>
+    <select id="duration">
+      <option value="1">1 ชั่วโมง</option>
+      <option value="1.5">1.30 ชั่วโมง</option>
+      <option value="2">2 ชั่วโมง</option>
+      <option value="2.5">2.30 ชั่วโมง</option>
+      <option value="3">3 ชั่วโมง</option>
+      <option value="4">4 ชั่วโมง</option>
+      <option value="5">5 ชั่วโมง</option>
+      <option value="6">6 ชั่วโมง</option>
+      <option value="7">7 ชั่วโมง</option>
+      <option value="8">8 ชั่วโมง</option>
+    </select>
+
     <input type="text" id="contact_mobile" placeholder="เบอร์โทรติดต่อ">
     
     <button class="primary" onclick="submitBooking()">บันทึกข้อมูล</button>
@@ -91,7 +103,8 @@
 </div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbwAoKs6iRuaVIE1s_bO_zPSmSou-p_KxTe-jxqbQn2KJUYDdTp2CcucMypef02I8p6EWg/exec"; 
+// ระวัง: เปลี่ยน URL ENDPOINT ให้เป็นของคุณเสมอ
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbyPrlWxbeJD7M0hxbusdumomXBAz2Whw3QAfHYdqWMgcmKPuZTQWfsJD17nBxrBBq_GqA/exec"; 
 let userId = "", role = "", mobile = "", displayName = "";
 
 function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
@@ -113,7 +126,6 @@ async function init() {
     const p = await liff.getProfile();
     userId = p.userId; displayName = p.displayName;
     
-    // ดึงรูปโปรไฟล์มาแสดง
     document.getElementById("username").innerText = displayName;
     if (p.pictureUrl) {
       const pImg = document.getElementById("profileImg");
@@ -196,6 +208,7 @@ async function submitBooking() {
     passenger_count: document.getElementById("passenger_count").value, 
     pickup_location: document.getElementById("pickup_location").value, 
     dropoff_location: document.getElementById("dropoff_location").value, 
+    duration: document.getElementById("duration").value, // ส่งค่า duration
     contact_mobile: document.getElementById("contact_mobile").value 
   }) }).then(r => r.json());
   
