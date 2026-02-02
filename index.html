@@ -10,6 +10,11 @@
   .card { background:#fff; padding:16px; border-radius:12px; margin-bottom:12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); border:1px solid #eee; }
   .card.past-job { opacity: 0.6; background: #f8f9fa; filter: grayscale(0.5); }
   h2 { font-size:22px; color:#0a7cff; margin-bottom:5px; }
+  
+  /* เพิ่มส่วนสไตล์รูปโปรไฟล์ */
+  .profile-container { display: flex; align-items: center; gap: 12px; margin-bottom: 5px; }
+  #profileImg { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); object-fit: cover; display: none; }
+  
   #username { font-weight:bold; font-size:18px; }
   #roleBadge { display:inline-block; padding:3px 10px; border-radius:15px; background:#e4e6eb; font-size:12px; margin-bottom:15px; font-weight:600; }
   
@@ -41,7 +46,12 @@
 
 <div style="max-width: 500px; margin: auto;">
   <h2>ระบบจองรถ หก-มน.</h2>
-  <div id="username">สวัสดี...</div>
+  
+  <div class="profile-container">
+    <img id="profileImg" src="" alt="Profile Image">
+    <div id="username">สวัสดี...</div>
+  </div>
+  
   <div id="roleBadge">...</div>
   <div id="driverMobileArea" style="font-size: 14px; color: #666; margin-top: -10px; margin-bottom: 15px; font-weight: bold;"></div>
 
@@ -102,7 +112,14 @@ async function init() {
     if (!liff.isLoggedIn()) liff.login();
     const p = await liff.getProfile();
     userId = p.userId; displayName = p.displayName;
+    
+    // ดึงรูปโปรไฟล์มาแสดง
     document.getElementById("username").innerText = displayName;
+    if (p.pictureUrl) {
+      const pImg = document.getElementById("profileImg");
+      pImg.src = p.pictureUrl;
+      pImg.style.display = "block";
+    }
 
     const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "auto_register", line_user_id: userId, display_name: displayName }) }).then(r => r.json());
     role = res.role;
@@ -143,10 +160,9 @@ async function showHistory() {
     const isPast = new Date(b.booking_date).setHours(0,0,0,0) < nowDay;
     const isCancelled = b.status === "cancelled";
     
-    // กำหนดสีตามสถานะ (แก้ไขเฉพาะตรงนี้)
-    let statusColor = "#28a745"; // สีเขียว (ปกติ)
-    if (b.status === "pending") statusColor = "#f39c12"; // สีส้ม
-    if (isCancelled) statusColor = "#d9534f"; // สีแดงหม่น
+    let statusColor = "#28a745"; 
+    if (b.status === "pending") statusColor = "#f39c12"; 
+    if (isCancelled) statusColor = "#d9534f"; 
 
     return `
       <div class="card ${ (isPast || isCancelled) ? 'past-job' : '' }">
