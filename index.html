@@ -45,7 +45,7 @@
   <p style="margin-top:12px; font-weight:bold; color:#0a7cff;">กำลังโหลดข้อมูล...</p>
 </div>
 
-<div class="admin-lock" onclick="becomeAdmin()">🔑</div>
+<div id="adminLockBtn" class="admin-lock" onclick="becomeAdmin()">🔑</div>
 
 <div style="max-width: 500px; margin: auto;">
   <h2>ระบบจองรถ หก-มน.</h2>
@@ -116,7 +116,7 @@
 </div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycby6v1OZii-AvyCLS6itfUY5-Wncw83B9lNJMfLqxhBYxuBW1MUl92w1c3L_r75rnUGl8A/exec";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbw1bMG91JllqXE_6OE4qy55d511xUlqPnWWYTOCeVaW0f0nI02gYxwG1h0vAtwQfRfO8w/exec";
 let userId = "", role = "", mobile = "", displayName = "";
 
 function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
@@ -159,20 +159,33 @@ function renderUI() {
   const roleToggleArea = document.getElementById("roleToggleArea");
   const mobileArea = document.getElementById("driverMobileArea");
   const adminArea = document.getElementById("adminAssignArea");
+  const adminLockBtn = document.getElementById("adminLockBtn");
   
   if (role === "admin") {
     document.getElementById("roleBadge").innerText = "🛡️ ผู้ดูแลระบบ (Admin)";
     bookBtn.innerText = "➕ ลงงานใหม่ (ในนาม Admin)";
     adminArea.style.display = "block";
     loadDriversList();
+    
+    // หากเป็น Admin แล้ว เปลี่ยนรูปกุญแจเป็นแบบปลดล็อค และให้กดเพื่อยกเลิกสถานะ
+    adminLockBtn.innerText = "🔓";
+    adminLockBtn.onclick = cancelAdminRole;
   } else if (role === "driver") {
     document.getElementById("roleBadge").innerText = "🔓 พนักงานขับรถ";
     bookBtn.innerText = "➕ เพิ่มงานใหม่ (รับเอง)";
     adminArea.style.display = "none";
+    
+    // ไม่ใช่ Admin แสดงกุญแจปกติ
+    adminLockBtn.innerText = "🔑";
+    adminLockBtn.onclick = becomeAdmin;
   } else {
     document.getElementById("roleBadge").innerText = "👤 ผู้ใช้งานทั่วไป";
     bookBtn.innerText = "📅 จองรถล่วงหน้า";
     adminArea.style.display = "none";
+    
+    // ไม่ใช่ Admin แสดงกุญแจปกติ
+    adminLockBtn.innerText = "🔑";
+    adminLockBtn.onclick = becomeAdmin;
   }
 
   mobileArea.innerText = (role === "driver" && mobile) ? "📞 เบอร์โทร: " + mobile : "";
