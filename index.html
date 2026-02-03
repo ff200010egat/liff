@@ -30,10 +30,8 @@
   #formBox { display:none; }
   .val-text { font-size:15px; margin-bottom:5px; line-height: 1.4; }
 
-  /* ปรับปรุง Container สำหรับปุ่มมุมขวาบน */
-  .admin-tools { position: absolute; top: 15px; right: 15px; display: flex; gap: 8px; align-items: center; }
-  .admin-btn { font-size: 18px; cursor: pointer; background: #fff; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-decoration: none; color: inherit; }
-  .admin-lock { font-size: 20px; cursor: pointer; background: #fff; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+  /* ปุ่ม Admin มุมขวาบน */
+  .admin-lock { position: absolute; top: 15px; right: 15px; font-size: 20px; cursor: pointer; background: #fff; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
   #loading { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; }
   .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #0a7cff; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; }
@@ -47,11 +45,7 @@
   <p style="margin-top:12px; font-weight:bold; color:#0a7cff;">กำลังโหลดข้อมูล...</p>
 </div>
 
-<div class="admin-tools">
-  <a id="calBtn" href="https://calendar.google.com/calendar/embed?src=a2268447d45f4d8def8af5a731281f1bd9d2d0cd9a285720611db2a8f35e54db%40group.calendar.google.com&ctz=Asia%2FBangkok&hl=th" target="_blank" class="admin-btn" style="display:none;">📅</a>
-  <a id="dashBtn" href="https://lookerstudio.google.com/reporting/03ec1f8d-6821-4e4f-bb73-9732dca2f7b8?openExternalBrowser=1" target="_blank" class="admin-btn" style="display:none;">📊</a>
-  <div id="adminLockBtn" class="admin-lock" onclick="becomeAdmin()">🔑</div>
-</div>
+<div id="adminLockBtn" class="admin-lock" onclick="becomeAdmin()">🔑</div>
 
 <div style="max-width: 500px; margin: auto;">
   <h2>ระบบจองรถ หก-มน.</h2>
@@ -166,8 +160,6 @@ function renderUI() {
   const mobileArea = document.getElementById("driverMobileArea");
   const adminArea = document.getElementById("adminAssignArea");
   const adminLockBtn = document.getElementById("adminLockBtn");
-  const calBtn = document.getElementById("calBtn");
-  const dashBtn = document.getElementById("dashBtn");
   
   if (role === "admin") {
     document.getElementById("roleBadge").innerText = "🛡️ ผู้ดูแลระบบ (Admin)";
@@ -175,10 +167,7 @@ function renderUI() {
     adminArea.style.display = "block";
     loadDriversList();
     
-    // แสดงปุ่ม Calendar และ Dashboard สำหรับ Admin
-    calBtn.style.display = "flex";
-    dashBtn.style.display = "flex";
-    
+    // หากเป็น Admin แล้ว เปลี่ยนรูปกุญแจเป็นแบบปลดล็อค และให้กดเพื่อยกเลิกสถานะ
     adminLockBtn.innerText = "🔓";
     adminLockBtn.onclick = cancelAdminRole;
   } else if (role === "driver") {
@@ -186,8 +175,7 @@ function renderUI() {
     bookBtn.innerText = "➕ เพิ่มงานใหม่ (รับเอง)";
     adminArea.style.display = "none";
     
-    calBtn.style.display = "none";
-    dashBtn.style.display = "none";
+    // ไม่ใช่ Admin แสดงกุญแจปกติ
     adminLockBtn.innerText = "🔑";
     adminLockBtn.onclick = becomeAdmin;
   } else {
@@ -195,8 +183,7 @@ function renderUI() {
     bookBtn.innerText = "📅 จองรถล่วงหน้า";
     adminArea.style.display = "none";
     
-    calBtn.style.display = "none";
-    dashBtn.style.display = "none";
+    // ไม่ใช่ Admin แสดงกุญแจปกติ
     adminLockBtn.innerText = "🔑";
     adminLockBtn.onclick = becomeAdmin;
   }
