@@ -21,6 +21,7 @@
   .primary { background:#0a7cff; color:#fff; }
   .secondary { background:#e4e6eb; color:#4b4f56; }
   .success { background:#28a745; color:#fff; }
+  .warning { background:#f39c12; color:#fff; } /* เพิ่มสีเหลืองสำหรับปุ่มรับทราบงาน */
   .danger { background:#fff1f0; color:#ff4d4f; border:1px solid #ffccc7; padding:10px; font-size:14px; }
   
   label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #555; }
@@ -115,7 +116,7 @@
 </div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbz1SJGc1zh4clZgcRZbtPat2kwDL30OdNMDVZV1nEtdruofeRvgFsiLHcSX0X3RQzwPaw/exec"; // *** เปลี่ยนเป็น URL ของคุณ ***
+const ENDPOINT = "https://script.google.com/macros/s/AKfycby6v1OZii-AvyCLS6itfUY5-Wncw83B9lNJMfLqxhBYxuBW1MUl92w1c3L_r75rnUGl8A/exec";
 let userId = "", role = "", mobile = "", displayName = "";
 
 function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
@@ -163,7 +164,7 @@ function renderUI() {
     document.getElementById("roleBadge").innerText = "🛡️ ผู้ดูแลระบบ (Admin)";
     bookBtn.innerText = "➕ ลงงานใหม่ (ในนาม Admin)";
     adminArea.style.display = "block";
-    loadDriversList(); // โหลดรายชื่อคนขับใส่ Dropdown
+    loadDriversList();
   } else if (role === "driver") {
     document.getElementById("roleBadge").innerText = "🔓 พนักงานขับรถ";
     bookBtn.innerText = "➕ เพิ่มงานใหม่ (รับเอง)";
@@ -207,7 +208,7 @@ async function showHistory() {
   
   const nowDay = new Date().setHours(0,0,0,0);
   let filtered = (res.data || []).filter(b => {
-    if (role === "admin") return true; // Admin เห็นทั้งหมด
+    if (role === "admin") return true;
     if (role === "driver") return (b.booked_by === userId || b.driver_line_id === userId || b.status === "pending");
     return (b.booked_by === userId);
   });
@@ -218,6 +219,12 @@ async function showHistory() {
     const isCancelled = b.status === "cancelled";
     let statusColor = (b.status === "pending") ? "#f39c12" : (isCancelled ? "#d9534f" : "#28a745");
 
+    // เพิ่มปุ่มรับทราบงาน (Acknowledge)
+    let ackBtn = "";
+    if (role === "driver" && b.driver_line_id === userId && b.status === "confirmed") {
+        ackBtn = `<button class="warning" onclick="acknowledgeJob('${b.booking_id}')">👌 รับทราบงานนี้แล้ว</button>`;
+    }
+
     return `
       <div class="card ${ (isPast || isCancelled) ? 'past-job' : '' }">
         <div class="val-text"><b>${b.pickup_location} ➡️ ${b.dropoff_location}</b></div>
@@ -225,11 +232,22 @@ async function showHistory() {
         <div class="val-text">👤 จองโดย: ${b.user_display_name} | 🚗 ${b.vehicle_type}</div>
         <div class="val-text">สถานะ: <span style="font-weight:bold; color:${statusColor}">${b.status.toUpperCase()} ${b.driver_name ? '('+b.driver_name+')' : ''}</span></div>
         ${(role === "driver" && b.status === "pending") ? `<button class="success" onclick="acceptJob('${b.booking_id}')">✅ รับงานนี้</button>` : ""}
+        ${ackBtn}
         ${((b.booked_by === userId || b.driver_line_id === userId || role === "admin") && !isCancelled) ? `<button class="danger" onclick="cancelBooking('${b.booking_id}')">❌ ยกเลิกงานนี้</button>` : ""}
       </div>
     `;
   }).join("");
   toggleLoad(false);
+}
+
+async function acknowledgeJob(id) {
+  if(confirm("ยืนยันการรับทราบงานที่มอบหมาย?")) {
+    toggleLoad(true);
+    await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "acknowledge_job", booking_id: id, line_user_id: userId, display_name: displayName }) });
+    alert("ส่งการยืนยันให้ Admin เรียบร้อย");
+    await showHistory();
+    toggleLoad(false);
+  }
 }
 
 async function becomeAdmin() {
@@ -266,7 +284,7 @@ async function submitBooking() {
     dropoff_location: document.getElementById("dropoff_location").value, 
     duration: document.getElementById("duration").value,
     contact_mobile: document.getElementById("contact_mobile").value,
-    assign_driver_id: document.getElementById("assign_driver_id").value // ส่งค่า ID คนขับที่ Admin เลือก
+    assign_driver_id: document.getElementById("assign_driver_id").value 
   }) }).then(r => r.json());
   
   if (res.success) { 
