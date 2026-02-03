@@ -21,10 +21,8 @@
   .primary { background:#0a7cff; color:#fff; }
   .secondary { background:#e4e6eb; color:#4b4f56; }
   .success { background:#28a745; color:#fff; }
-  .warning { background:#f39c12; color:#fff; }
+  .warning { background:#f39c12; color:#fff; } /* เพิ่มสีเหลืองสำหรับปุ่มรับทราบงาน */
   .danger { background:#fff1f0; color:#ff4d4f; border:1px solid #ffccc7; padding:10px; font-size:14px; }
-  .loadmore { background:#f0f2f5; color:#0a7cff; border:2px dashed #0a7cff; padding:12px; font-size:15px; margin:4px 0 16px 0; }
-  .loadmore:hover { background:#e8f0fe; }
   
   label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #555; }
   input, select { width:100%; padding:12px; box-sizing: border-box; font-size:16px; margin-bottom:12px; border-radius:8px; border:1px solid #ddd; background: #fff; }
@@ -32,6 +30,7 @@
   #formBox { display:none; }
   .val-text { font-size:15px; margin-bottom:5px; line-height: 1.4; }
 
+  /* ปุ่ม Admin มุมขวาบน */
   .admin-lock { position: absolute; top: 15px; right: 15px; font-size: 20px; cursor: pointer; background: #fff; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
   #loading { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; }
@@ -120,11 +119,6 @@
 const ENDPOINT = "https://script.google.com/macros/s/AKfycbzy7mhpOX-PF5m8cAWLjtbonpiT9fYM5J1Mv2UcL8OYaYgxt2DwkjtaTS15YIHZqxCC2w/exec";
 let userId = "", role = "", mobile = "", displayName = "";
 
-// ── เพิ่มมา: ตัวแปรสำหรับ load more ──
-let allFilteredBookings = [];  // เก็บรายการทั้งหมดหลัง filter
-const LOAD_STEP = 10;          // พิ่มครั้งละ 10 รายการ
-let currentShowCount = 0;      // จำนวนที่แสดงอยู่ตอนนี้
-
 function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
 
 function formatThaiDateTime(dateVal, timeVal) {
@@ -173,6 +167,7 @@ function renderUI() {
     adminArea.style.display = "block";
     loadDriversList();
     
+    // หากเป็น Admin แล้ว เปลี่ยนรูปกุญแจเป็นแบบปลดล็อค และให้กดเพื่อยกเลิกสถานะ
     adminLockBtn.innerText = "🔓";
     adminLockBtn.onclick = cancelAdminRole;
   } else if (role === "driver") {
@@ -180,6 +175,7 @@ function renderUI() {
     bookBtn.innerText = "➕ เพิ่มงานใหม่ (รับเอง)";
     adminArea.style.display = "none";
     
+    // ไม่ใช่ Admin แสดงกุญแจปกติ
     adminLockBtn.innerText = "🔑";
     adminLockBtn.onclick = becomeAdmin;
   } else {
@@ -187,6 +183,7 @@ function renderUI() {
     bookBtn.innerText = "📅 จองรถล่วงหน้า";
     adminArea.style.display = "none";
     
+    // ไม่ใช่ Admin แสดงกุญแจปกติ
     adminLockBtn.innerText = "🔑";
     adminLockBtn.onclick = becomeAdmin;
   }
@@ -217,95 +214,42 @@ async function loadDriversList() {
   }
 }
 
-// ── สร้าง HTML ของ card แต่ละรายการ ──
-function buildCard(b) {
-  const nowDay = new Date().setHours(0,0,0,0);
-  const isPast = new Date(b.booking_date).setHours(0,0,0,0) < nowDay;
-  const isCancelled = b.status === "cancelled";
-  let statusColor = (b.status === "pending") ? "#f39c12" : (isCancelled ? "#d9534f" : "#28a745");
-
-  // ปุ่มรับทราบงาน (คงเดิม)
-  let ackBtn = "";
-  if (role === "driver" && b.driver_line_id === userId && b.status === "confirmed") {
-    ackBtn = `<button class="warning" onclick="acknowledgeJob('${b.booking_id}')">👌 รับทราบงานนี้แล้ว</button>`;
-  }
-
-  // ── ปุ่ม cancel: admin เห็นทุกงาน, driver/user เห็นเฉพาะของตัวเอง ──
-  let cancelBtn = "";
-  if (!isCancelled) {
-    if (role === "admin") {
-      // admin → cancel ได้ทุกงานในระบบ
-      cancelBtn = `<button class="danger" onclick="cancelBooking('${b.booking_id}')">❌ ยกเลิกงานนี้</button>`;
-    } else if (b.booked_by === userId || b.driver_line_id === userId) {
-      // driver หรือ user → cancel เฉพาะงานของตัวเอง (คงเดิม)
-      cancelBtn = `<button class="danger" onclick="cancelBooking('${b.booking_id}')">❌ ยกเลิกงานนี้</button>`;
-    }
-  }
-
-  return `
-    <div class="card ${ (isPast || isCancelled) ? 'past-job' : '' }">
-      <div class="val-text"><b>${b.pickup_location} ➡️ ${b.dropoff_location}</b></div>
-      <div class="val-text">📅 ${formatThaiDateTime(b.booking_date, b.booking_time)}</div>
-      <div class="val-text">👤 จองโดย: ${b.user_display_name} | 🚗 ${b.vehicle_type}</div>
-      <div class="val-text">สถานะ: <span style="font-weight:bold; color:${statusColor}">${b.status.toUpperCase()} ${b.driver_name ? '('+b.driver_name+')' : ''}</span></div>
-      ${(role === "driver" && b.status === "pending") ? `<button class="success" onclick="acceptJob('${b.booking_id}')">✅ รับงานนี้</button>` : ""}
-      ${ackBtn}
-      ${cancelBtn}
-    </div>
-  `;
-}
-
-// ── วาง cards ต้องการแค่ slice จาก allFilteredBookings ตาม currentShowCount ──
-function paintCards() {
-  const hBox = document.getElementById("historyBox");
-  const visible = allFilteredBookings.slice(0, currentShowCount);
-
-  let html = "<h3 style='margin: 20px 0 10px 0;'>รายการงาน</h3>";
-  html += visible.map(b => buildCard(b)).join("");
-
-  // ── Load More button: แสดงเฉพาะ admin เท่านั้น + มีรายการเหลือ ──
-  if (role === "admin" && currentShowCount < allFilteredBookings.length) {
-    const remaining = allFilteredBookings.length - currentShowCount;
-    html += `<button class="loadmore" onclick="loadMore()">📂 โหลดเพิ่มเติม (เหลือ ${remaining} รายการ)</button>`;
-  }
-
-  hBox.innerHTML = html;
-}
-
-// ── กดปุ่ม Load More → เพิ่ม LOAD_STEP รายการ แล้ว re-paint ──
-function loadMore() {
-  currentShowCount += LOAD_STEP;
-  paintCards();
-}
-
 async function showHistory() {
   toggleLoad(true);
+  const hBox = document.getElementById("historyBox");
   const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => r.json());
   
   const nowDay = new Date().setHours(0,0,0,0);
-
-  // filter ตาม role (คงเดิมเงินตรง)
   let filtered = (res.data || []).filter(b => {
     if (role === "admin") return true;
     if (role === "driver") return (b.booked_by === userId || b.driver_line_id === userId || b.status === "pending");
     return (b.booked_by === userId);
   });
 
-  // reverse เดียวกับเดิม
-  filtered.reverse();
+  hBox.innerHTML = "<h3 style='margin: 20px 0 10px 0;'>รายการงาน</h3>";
+  hBox.innerHTML += filtered.reverse().map(b => {
+    const isPast = new Date(b.booking_date).setHours(0,0,0,0) < nowDay;
+    const isCancelled = b.status === "cancelled";
+    let statusColor = (b.status === "pending") ? "#f39c12" : (isCancelled ? "#d9534f" : "#28a745");
 
-  // เก็บไว้ใน global สำหรับ load more
-  allFilteredBookings = filtered;
+    // เพิ่มปุ่มรับทราบงาน (Acknowledge)
+    let ackBtn = "";
+    if (role === "driver" && b.driver_line_id === userId && b.status === "confirmed") {
+        ackBtn = `<button class="warning" onclick="acknowledgeJob('${b.booking_id}')">👌 รับทราบงานนี้แล้ว</button>`;
+    }
 
-  if (role === "admin") {
-    // admin เริ่มต้นแสดง 10 รายการ
-    currentShowCount = LOAD_STEP;
-  } else {
-    // driver / user แสดงทั้งหมด (ไม่มี load more)
-    currentShowCount = allFilteredBookings.length;
-  }
-
-  paintCards();
+    return `
+      <div class="card ${ (isPast || isCancelled) ? 'past-job' : '' }">
+        <div class="val-text"><b>${b.pickup_location} ➡️ ${b.dropoff_location}</b></div>
+        <div class="val-text">📅 ${formatThaiDateTime(b.booking_date, b.booking_time)}</div>
+        <div class="val-text">👤 จองโดย: ${b.user_display_name} | 🚗 ${b.vehicle_type}</div>
+        <div class="val-text">สถานะ: <span style="font-weight:bold; color:${statusColor}">${b.status.toUpperCase()} ${b.driver_name ? '('+b.driver_name+')' : ''}</span></div>
+        ${(role === "driver" && b.status === "pending") ? `<button class="success" onclick="acceptJob('${b.booking_id}')">✅ รับงานนี้</button>` : ""}
+        ${ackBtn}
+        ${((b.booked_by === userId || b.driver_line_id === userId || role === "admin") && !isCancelled) ? `<button class="danger" onclick="cancelBooking('${b.booking_id}')">❌ ยกเลิกงานนี้</button>` : ""}
+      </div>
+    `;
+  }).join("");
   toggleLoad(false);
 }
 
