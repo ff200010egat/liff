@@ -172,8 +172,7 @@ async function init() {
     role = res.role;
     mobile = res.mobile; 
     renderUI();
-    toggleLoad(false);
-    showHistory();
+    await showHistory();
   } catch (err) { alert(err); toggleLoad(false); }
 }
 
@@ -245,6 +244,7 @@ async function loadDriversList() {
 }
 
 async function showHistory() {
+  toggleLoad(true); // Ensure loading is ON during process
   const hBox = document.getElementById("historyBox");
   const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => r.json());
     
@@ -255,8 +255,20 @@ async function showHistory() {
     return (b.booked_by === userId);
   });
 
-  hBox.innerHTML = "<h3 style='margin: 20px 0 10px 0;'>รายการงาน</h3>";
-  hBox.innerHTML += filtered.reverse().map(b => {
+  // แยกรายการ Active และ Cancelled
+  let activeList = filtered.filter(b => b.status !== "cancelled");
+  let cancelledList = filtered.filter(b => b.status === "cancelled");
+
+  // ฟังก์ชันช่วยเรียงลำดับวันที่ (จากใกล้ไปไกล)
+  const sortFunc = (a, b) => new Date(a.booking_date) - new Date(b.booking_date) || (a.booking_time > b.booking_time ? 1 : -1);
+  
+  activeList.sort(sortFunc);
+  cancelledList.sort(sortFunc);
+
+  // Render HTML สำหรับ Active List
+  let html = "<h3 style='margin: 20px 0 10px 0;'>รายการงาน (เร็วๆ นี้)</h3>";
+  
+  const renderCard = (b) => {
     const isPast = new Date(b.booking_date).setHours(0,0,0,0) < nowDay;
     const isCancelled = b.status === "cancelled";
     let statusColor = (b.status === "pending") ? "#f39c12" : (isCancelled ? "#d9534f" : "#28a745");
@@ -287,7 +299,40 @@ async function showHistory() {
         ${((b.booked_by === userId || b.driver_line_id === userId || role === "admin") && !isCancelled) ? `<button class="danger" onclick="cancelBooking('${b.booking_id}')">❌ ยกเลิกงานนี้</button>` : ""}
       </div>
     `;
-  }).join("");
+  };
+
+  if(activeList.length === 0) html += "<p style='color:#777;'>ไม่มีรายการงานที่กำลังจะมาถึง</p>";
+  else html += activeList.map(renderCard).join("");
+
+  // ส่วนที่ 2: รายการยกเลิก (Toggle)
+  if(cancelledList.length > 0) {
+    html += `
+      <div style="margin-top:25px; border-top: 1px dashed #ccc; padding-top:15px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0; color:#666;">รายการที่ถูกยกเลิก</h3>
+            <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;" onclick="toggleCancelled()">
+               👁️ ดูรายละเอียด (${cancelledList.length})
+            </button>
+        </div>
+        <div id="cancelledArea" style="display:none; margin-top:15px;">
+           ${cancelledList.map(renderCard).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  hBox.innerHTML = html;
+  toggleLoad(false);
+}
+
+// ฟังก์ชันสำหรับ Toggle รายการยกเลิก
+function toggleCancelled() {
+    const area = document.getElementById("cancelledArea");
+    if (area.style.display === "none") {
+        area.style.display = "block";
+    } else {
+        area.style.display = "none";
+    }
 }
 
 function openAssignModal(id) {
