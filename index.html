@@ -21,7 +21,7 @@
   .primary { background:#0a7cff; color:#fff; }
   .secondary { background:#e4e6eb; color:#4b4f56; }
   .success { background:#28a745; color:#fff; }
-  .warning { background:#f39c12; color:#fff; } /* เพิ่มสีเหลืองสำหรับปุ่มรับทราบงาน */
+  .warning { background:#f39c12; color:#fff; }
   .danger { background:#fff1f0; color:#ff4d4f; border:1px solid #ffccc7; padding:10px; font-size:14px; }
     
   label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #555; }
@@ -30,7 +30,6 @@
   #formBox { display:none; }
   .val-text { font-size:15px; margin-bottom:5px; line-height: 1.4; }
 
-  /* ปรับปรุง Container สำหรับปุ่มมุมขวาบน */
   .admin-tools { position: absolute; top: 15px; right: 15px; display: flex; gap: 8px; align-items: center; }
   .admin-btn { font-size: 18px; cursor: pointer; background: #fff; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-decoration: none; color: inherit; }
   .admin-lock { font-size: 20px; cursor: pointer; background: #fff; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
@@ -39,7 +38,6 @@
   .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #0a7cff; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-  /* เพิ่ม CSS สำหรับ Modal เลือกคนขับ */
   .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center; }
   .modal-box { background:#fff; padding:20px; border-radius:12px; width:85%; max-width:320px; text-align:center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
 </style>
@@ -141,8 +139,8 @@
 <script>
 const ENDPOINT = "https://script.google.com/macros/s/AKfycbxUmZDxJBpHZ_KHMb7gowUgZJfwUZ4tzZuMe-4di8Nyfl3ZFS1NDWDVoHvkcuuHQjdBOw/exec";
 let userId = "", role = "", mobile = "", displayName = "";
-let driverListCache = []; // ตัวแปรเก็บรายชื่อคนขับสำหรับ Modal
-let currentBookingIdToAssign = null; // ตัวแปรเก็บ ID งานที่กำลังจะมอบหมาย
+let driverListCache = [];
+let currentBookingIdToAssign = null;
 
 function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
 
@@ -174,9 +172,9 @@ async function init() {
     role = res.role;
     mobile = res.mobile; 
     renderUI();
-    await showHistory();
-  } catch (err) { alert(err); }
-  toggleLoad(false);
+    toggleLoad(false);
+    showHistory();
+  } catch (err) { alert(err); toggleLoad(false); }
 }
 
 function renderUI() {
@@ -194,7 +192,6 @@ function renderUI() {
     adminArea.style.display = "block";
     loadDriversList();
      
-    // แสดงปุ่ม Calendar และ Dashboard สำหรับ Admin
     calBtn.style.display = "flex";
     dashBtn.style.display = "flex";
      
@@ -238,7 +235,7 @@ function renderUI() {
 async function loadDriversList() {
   const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_drivers_list" }) }).then(r => r.json());
   if (res.success) {
-    driverListCache = res.drivers; // เก็บรายชื่อเข้าตัวแปร Global
+    driverListCache = res.drivers;
     const select = document.getElementById("assign_driver_id");
     select.innerHTML = '<option value="">-- รอคนขับรับงานเอง --</option>';
     res.drivers.forEach(d => {
@@ -248,7 +245,6 @@ async function loadDriversList() {
 }
 
 async function showHistory() {
-  toggleLoad(true);
   const hBox = document.getElementById("historyBox");
   const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => r.json());
     
@@ -265,13 +261,11 @@ async function showHistory() {
     const isCancelled = b.status === "cancelled";
     let statusColor = (b.status === "pending") ? "#f39c12" : (isCancelled ? "#d9534f" : "#28a745");
 
-    // เพิ่มปุ่มรับทราบงาน (Acknowledge)
     let ackBtn = "";
     if (role === "driver" && b.driver_line_id === userId && b.status === "confirmed") {
         ackBtn = `<button class="warning" onclick="acknowledgeJob('${b.booking_id}')">👌 รับทราบงานนี้แล้ว</button>`;
     }
 
-    // เพิ่มปุ่มมอบหมายงานสำหรับ Admin (แสดงเฉพาะงานที่ยังไม่ถูกยกเลิก)
     let adminAssignBtn = "";
     if (role === "admin" && !isCancelled) {
         adminAssignBtn = `<button class="primary" style="background:#17a2b8; margin-bottom:8px;" onclick="openAssignModal('${b.booking_id}')">👤 มอบหมายงาน (Admin)</button>`;
@@ -294,15 +288,13 @@ async function showHistory() {
       </div>
     `;
   }).join("");
-  toggleLoad(false);
 }
 
-// ฟังก์ชันจัดการ Modal มอบหมายงาน
 function openAssignModal(id) {
     currentBookingIdToAssign = id;
     const sel = document.getElementById("modal_driver_select");
     sel.innerHTML = '<option value="">-- เลือกคนขับ --</option>';
-    if(driverListCache.length === 0) loadDriversList(); // โหลดใหม่ถ้ายังไม่มี
+    if(driverListCache.length === 0) loadDriversList();
     driverListCache.forEach(d => {
         sel.innerHTML += `<option value="${d.id}">${d.name}</option>`;
     });
@@ -321,10 +313,8 @@ async function confirmAssign() {
     const selectElem = document.getElementById("modal_driver_select");
     const drvName = selectElem.options[selectElem.selectedIndex].text;
 
-    // Review & Confirm
     if(confirm(`ทบทวนรายการ:\nมอบหมายงานให้: ${drvName}\nยืนยันหรือไม่?`)) {
         toggleLoad(true);
-        // ใช้ Action: assign_driver โดยส่ง id คนขับไป
         await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ 
             action: "assign_driver", 
             booking_id: currentBookingIdToAssign, 
