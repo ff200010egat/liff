@@ -244,7 +244,7 @@ async function loadDriversList() {
 }
 
 async function showHistory() {
-  toggleLoad(true); // Ensure loading is ON during process
+  toggleLoad(true);
   const hBox = document.getElementById("historyBox");
   const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => r.json());
     
@@ -255,19 +255,25 @@ async function showHistory() {
     return (b.booked_by === userId);
   });
 
-  // แยกรายการ Active และ Cancelled
-  let activeList = filtered.filter(b => b.status !== "cancelled");
+  // แยกรายการ 3 กลุ่ม:
+  // 1. upcomingList = งาน Active (ไม่ Cancel) ที่วัน >= วันนี้
+  // 2. pastList = งาน Active (ไม่ Cancel) ที่วัน < วันนี้
+  // 3. cancelledList = งาน Cancel
+  
+  let allNonCancelled = filtered.filter(b => b.status !== "cancelled");
   let cancelledList = filtered.filter(b => b.status === "cancelled");
 
-  // ฟังก์ชันช่วยเรียงลำดับวันที่ (จากใกล้ไปไกล)
+  let upcomingList = allNonCancelled.filter(b => new Date(b.booking_date).setHours(0,0,0,0) >= nowDay);
+  let pastList = allNonCancelled.filter(b => new Date(b.booking_date).setHours(0,0,0,0) < nowDay);
+
+  // เรียงลำดับวันที่ (จากใกล้ไปไกล) ทุกกลุ่ม
   const sortFunc = (a, b) => new Date(a.booking_date) - new Date(b.booking_date) || (a.booking_time > b.booking_time ? 1 : -1);
   
-  activeList.sort(sortFunc);
+  upcomingList.sort(sortFunc);
+  pastList.sort(sortFunc);
   cancelledList.sort(sortFunc);
 
-  // Render HTML สำหรับ Active List
-  let html = "<h3 style='margin: 20px 0 10px 0;'>รายการงาน (เร็วๆ นี้)</h3>";
-  
+  // ฟังก์ชันย่อยสำหรับ Render Card
   const renderCard = (b) => {
     const isPast = new Date(b.booking_date).setHours(0,0,0,0) < nowDay;
     const isCancelled = b.status === "cancelled";
@@ -301,10 +307,29 @@ async function showHistory() {
     `;
   };
 
-  if(activeList.length === 0) html += "<p style='color:#777;'>ไม่มีรายการงานที่กำลังจะมาถึง</p>";
-  else html += activeList.map(renderCard).join("");
+  // 1. ส่วนรายการงานปัจจุบัน/อนาคต
+  let html = "<h3 style='margin: 20px 0 10px 0;'>รายการงาน (เร็วๆ นี้)</h3>";
+  if(upcomingList.length === 0) html += "<p style='color:#777;'>ไม่มีรายการงานที่กำลังจะมาถึง</p>";
+  else html += upcomingList.map(renderCard).join("");
 
-  // ส่วนที่ 2: รายการยกเลิก (Toggle)
+  // 2. ส่วนประวัติงานที่สำเร็จ (Toggle)
+  if(pastList.length > 0) {
+    html += `
+      <div style="margin-top:25px; border-top: 1px dashed #ccc; padding-top:15px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0; color:#666;">ประวัติงานที่สำเร็จ</h3>
+            <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;" onclick="togglePast()">
+               📜 ดูรายละเอียด (${pastList.length})
+            </button>
+        </div>
+        <div id="pastArea" style="display:none; margin-top:15px;">
+           ${pastList.map(renderCard).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  // 3. ส่วนรายการยกเลิก (Toggle)
   if(cancelledList.length > 0) {
     html += `
       <div style="margin-top:25px; border-top: 1px dashed #ccc; padding-top:15px;">
@@ -323,6 +348,16 @@ async function showHistory() {
 
   hBox.innerHTML = html;
   toggleLoad(false);
+}
+
+// ฟังก์ชันสำหรับ Toggle ประวัติงานเก่า
+function togglePast() {
+    const area = document.getElementById("pastArea");
+    if (area.style.display === "none") {
+        area.style.display = "block";
+    } else {
+        area.style.display = "none";
+    }
 }
 
 // ฟังก์ชันสำหรับ Toggle รายการยกเลิก
