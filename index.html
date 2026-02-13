@@ -682,7 +682,7 @@ const renderSeriesCard = (group) => {
          
          ${canAcceptAll ? `<button class="success" style="margin-bottom:8px;" onclick="acceptSeries('${group.batch_id}')">✅✅ รับงานทั้งหมด (${pendingCount} วัน)</button>` : ''}
          <button class="secondary" onclick="document.getElementById('series_${group.batch_id}').style.display = (document.getElementById('series_${group.batch_id}').style.display=='none'?'block':'none')">
-            📜 ดูรายละเอียด / ซ่อน
+            📜 กดดูรายละเอียด / ซ่อน
          </button>
          <div id="series_${group.batch_id}" style="display:none; margin-top:10px; border-top:1px dashed #ccc; padding-top:10px;">
             ${subCards}
