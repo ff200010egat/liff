@@ -412,7 +412,7 @@ async function showHistory() {
             <h3 style="margin:0; color:#d9534f;">งานไม่สำเร็จ (หมดอายุ)</h3>
             <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;"
             onclick="toggleFailed()">
-               ⚠️ ดูรายละเอียด (${failedList.length})
+                ⚠️ ดูรายละเอียด (${failedList.length})
             </button>
         </div>
         <div id="failedArea" style="display:none; margin-top:15px;">
@@ -430,7 +430,7 @@ async function showHistory() {
             <h3 style="margin:0; color:#666;">ประวัติงานที่สำเร็จ</h3>
             <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;"
             onclick="togglePast()">
-               📜 ดูรายละเอียด (${pastList.length})
+                📜 ดูรายละเอียด (${pastList.length})
             </button>
         </div>
         <div id="pastArea" style="display:none; margin-top:15px;">
@@ -448,7 +448,7 @@ async function showHistory() {
             <h3 style="margin:0; color:#666;">รายการที่ถูกยกเลิก</h3>
             <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;"
             onclick="toggleCancelled()">
-               👁️ ดูรายละเอียด (${cancelledList.length})
+                👁️ ดูรายละเอียด (${cancelledList.length})
             </button>
         </div>
         <div id="cancelledArea" style="display:none; margin-top:15px;">
@@ -592,15 +592,20 @@ async function confirmAssign() {
 
     if(confirm(`ทบทวนรายการ:\nมอบหมายงานให้: ${drvName}\nยืนยันหรือไม่?`)) {
         toggleLoad(true);
-        await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ 
-            action: "assign_driver", 
-            booking_id: currentBookingIdToAssign, 
-            assign_driver_id: drvId 
-        }) });
-        closeAssignModal();
-        alert("มอบหมายงานเรียบร้อย");
-        await showHistory();
-        toggleLoad(false);
+        try {
+            await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ 
+                action: "assign_driver", 
+                booking_id: currentBookingIdToAssign, 
+                assign_driver_id: drvId 
+            }) });
+            closeAssignModal();
+            alert("มอบหมายงานเรียบร้อย");
+            await showHistory();
+        } catch (err) {
+            alert("เกิดข้อผิดพลาด: " + err);
+        } finally {
+            toggleLoad(false);
+        }
     }
 }
 
@@ -701,30 +706,21 @@ function closeForm() { document.getElementById("formBox").style.display = "none"
 async function acceptSeries(batchId) {
     if(!confirm("ยืนยันรับงานทั้งหมดในชุดนี้?")) return;
     toggleLoad(true);
-    // Find all pending jobs in this batch from DOM or re-fetch? 
-    // Easier to re-fetch inside logic, but here we can just fetch all data again or pass IDs.
-    // For simplicity, we loop the 'accept_job' logic. 
-    // But we don't have the IDs easily here without parsing DOM or Global Var.
-    // Let's refactor showHistory to store data? Or simpler: 
-    // We already have the data in 'res' inside showHistory but it's local scope.
-    // We will do a quick fetch to get IDs of this batch.
-    
-    // Better approach: Since we don't want to change structure too much, 
-    // let's grab the IDs from the DOM (hidden input? no).
-    // Let's just fetch all bookings, filter by batch_id, and loop accept.
     
     const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => r.json());
     const jobs = res.data.filter(b => b.batch_id === batchId && b.status === 'pending');
     
-    for (let job of jobs) {
-         await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "accept_job", booking_id: job.booking_id, line_user_id: userId, display_name: displayName }) });
+    for(let job of jobs) {
+       await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "accept_job", booking_id: job.booking_id, line_user_id: userId, display_name: displayName }) });
     }
     
+    alert(`รับงานทั้งหมด ${jobs.length} รายการเรียบร้อย`);
     await showHistory();
     toggleLoad(false);
 }
 
 init();
+
 </script>
 </body>
 </html>
