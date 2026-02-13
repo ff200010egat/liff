@@ -173,15 +173,44 @@
 </div>
 
 <script>
+<script>
 const ENDPOINT = "https://script.google.com/macros/s/AKfycbwvGpDpGINMaKTDW8OOf1wSnLDgnGKma7qKSI5jo_Znu3Jk88-HNFPp4o0aY5-i_uQSmA/exec";
 let userId = "", role = "", mobile = "", displayName = "";
 let driverListCache = [];
 let currentBookingIdToAssign = null;
-// [ADDED] Global variables for Series feature
 let isSeriesMode = false;
 let fpInstance = null;
+let cachedBookingsData = null;
 
 function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
+
+// [OPTIMIZATION #1] localStorage Cache Helper
+const Cache = {
+  get: function(key) {
+    try {
+      const item = localStorage.getItem(key);
+      if (!item) return null;
+      const data = JSON.parse(item);
+      if (Date.now() > data.expires) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      return data.value;
+    } catch(e) { return null; }
+  },
+  set: function(key, value, ttlMinutes = 60) {
+    try {
+      const data = {
+        value: value,
+        expires: Date.now() + (ttlMinutes * 60 * 1000)
+      };
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch(e) { console.error("Cache set error:", e); }
+  },
+  remove: function(key) {
+    try { localStorage.removeItem(key); } catch(e) {}
+  }
+};
 
 function formatThaiDateTime(dateVal, timeVal) {
   if (!dateVal) return "-";
@@ -193,6 +222,7 @@ function formatThaiDateTime(dateVal, timeVal) {
   return dateStr + " | " + timeStr + " น.";
 }
 
+// [OPTIMIZATION #1 + #3] Optimized init() with cache and parallel fetch
 async function init() {
   toggleLoad(true);
   try {
@@ -208,18 +238,55 @@ async function init() {
       pImg.style.display = "block";
     }
 
-    const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "auto_register", line_user_id: userId, display_name: displayName }) }).then(r => r.json());
-    role = res.role;
-    mobile = res.mobile; 
-    renderUI();
-    // [ADDED] Init Flatpickr
-    initFlatpickr();
-    await showHistory();
-  } catch (err) { alert(err); toggleLoad(false);
+    // [OPTIMIZATION #1] Try cache first
+    const cacheKey = `user_${userId}`;
+    const cached = Cache.get(cacheKey);
+    
+    if (cached) {
+      // Use cached data immediately for faster UI
+      role = cached.role;
+      mobile = cached.mobile;
+      renderUI();
+      initFlatpickr();
+      // Show cached bookings if available
+      const cachedBookings = Cache.get(`bookings_${userId}`);
+      if (cachedBookings) {
+        cachedBookingsData = cachedBookings;
+        showHistory(true); // true = use cache
+      }
+    }
+
+    // [OPTIMIZATION #3] Parallel fetch to update data
+    const [userRes, bookingsRes] = await Promise.all([
+      fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "auto_register", line_user_id: userId, display_name: displayName }) }).then(r => r.json()),
+      fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => r.json())
+    ]);
+
+    // Update with fresh data
+    role = userRes.role;
+    mobile = userRes.mobile;
+    Cache.set(cacheKey, { role, mobile }, 60); // Cache for 1 hour
+    
+    if (!cached) {
+      // First time load
+      renderUI();
+      initFlatpickr();
+    } else if (cached.role !== role) {
+      // Role changed, re-render
+      renderUI();
+    }
+    
+    // Update bookings
+    cachedBookingsData = bookingsRes;
+    Cache.set(`bookings_${userId}`, bookingsRes, 5); // Cache for 5 minutes
+    showHistory(false); // false = fresh data
+    
+  } catch (err) { 
+    alert(err); 
+    toggleLoad(false);
   }
 }
 
-// [ADDED] Flatpickr Initialization and Toggle
 function initFlatpickr() {
   const cfg = {
     dateFormat: "Y-m-d",
@@ -243,11 +310,10 @@ function toggleBookingMode() {
   
   if (isSeriesMode) {
      btn.innerHTML = "🔄 โหมด: <b>จองต่อเนื่อง (Series)</b>";
-     btn.style.background = "#fff3cd"; // Yellowish
+     btn.style.background = "#fff3cd";
      btn.style.color = "#856404";
      btn.style.borderColor = "#ffeeba";
      label.innerText = "(เลือกได้หลายวัน - ภายในเดือนเดียวกัน)";
-     // Re-init Flatpickr as multiple with month restriction
      fpInstance.destroy();
      fpInstance = flatpickr("#booking_date", { 
         mode: "multiple", 
@@ -257,21 +323,16 @@ function toggleBookingMode() {
         onChange: function(selectedDates) {
           document.getElementById("selectedDatesList").innerText = `เลือกแล้ว ${selectedDates.length} วัน: ` + selectedDates.map(d => d.getDate()+"/"+(d.getMonth()+1)).join(", ");
         },
-        // [ADDED] จำกัดให้เลือกได้เฉพาะเดือนเดียวกัน
         enable: [
           function(date) {
-            // ถ้ายังไม่มีวันที่เลือก → เลือกได้ทุกวัน (หลัง today)
             const selected = fpInstance.selectedDates;
             if (selected.length === 0) return true;
-            
-            // ถ้ามีวันที่เลือกแล้ว → เลือกได้เฉพาะเดือนเดียวกับวันแรก
             const firstDate = selected[0];
             return date.getMonth() === firstDate.getMonth() && 
                    date.getFullYear() === firstDate.getFullYear();
           }
         ],
         onMonthChange: function(selectedDates, dateStr, instance) {
-          // ถ้ามีวันที่เลือกแล้ว → กลับไปเดือนเดิม
           if (selectedDates.length > 0) {
             const firstDate = selectedDates[0];
             instance.changeMonth(firstDate.getMonth() - instance.currentMonth, false);
@@ -281,12 +342,11 @@ function toggleBookingMode() {
      });
   } else {
      btn.innerHTML = "🔄 โหมด: <b>จองครั้งเดียว</b>";
-     btn.style.background = "#e3f2fd"; // Blueish
+     btn.style.background = "#e3f2fd";
      btn.style.color = "#0a7cff";
      btn.style.borderColor = "#0a7cff";
      label.innerText = "(เลือก 1 วัน)";
      document.getElementById("selectedDatesList").innerText = "";
-     // Re-init Flatpickr as single
      fpInstance.destroy();
      fpInstance = flatpickr("#booking_date", { mode: "single", dateFormat: "Y-m-d", minDate: "today", disableMobile: "true" });
   }
@@ -347,10 +407,23 @@ function renderUI() {
   roleToggleArea.innerHTML = toggleHtml;
 }
 
+// [OPTIMIZATION #1] Cache driver list
 async function loadDriversList() {
+  const cached = Cache.get(`drivers_list`);
+  if (cached) {
+    driverListCache = cached;
+    const select = document.getElementById("assign_driver_id");
+    select.innerHTML = '<option value="">-- รอคนขับรับงานเอง --</option>';
+    cached.forEach(d => {
+      select.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+    });
+  }
+  
+  // Fetch fresh data in background
   const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_drivers_list" }) }).then(r => r.json());
   if (res.success) {
     driverListCache = res.drivers;
+    Cache.set(`drivers_list`, res.drivers, 10); // Cache for 10 minutes
     const select = document.getElementById("assign_driver_id");
     select.innerHTML = '<option value="">-- รอคนขับรับงานเอง --</option>';
     res.drivers.forEach(d => {
@@ -359,31 +432,34 @@ async function loadDriversList() {
   }
 }
 
-// [MODIFIED] Update showHistory to support Grouping
-async function showHistory() {
-  toggleLoad(true);
+// [OPTIMIZATION #2] Lazy Load History with on-demand past/cancelled/failed
+async function showHistory(useCache = false) {
   const hBox = document.getElementById("historyBox");
-  const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => r.json());
+  
+  let res;
+  if (useCache && cachedBookingsData) {
+    res = cachedBookingsData;
+  } else {
+    if (!useCache) toggleLoad(true);
+    res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => r.json());
+    cachedBookingsData = res;
+    Cache.set(`bookings_${userId}`, res, 5);
+  }
+  
   const nowDay = new Date().setHours(0,0,0,0);
   let filtered = (res.data || []).filter(b => {
     if (role === "admin") return true;
     if (role === "driver") return (b.booked_by === userId || b.driver_line_id === userId || b.status === "pending");
     return (b.booked_by === userId);
   });
-  // แยกรายการ 3 กลุ่ม (ปรับปรุงใหม่):
-  // 1. upcomingList = งาน Active (ไม่ Cancel) ที่วัน >= วันนี้
-  // 2. pastList = งาน Active (ไม่ Cancel) ที่วัน < วันนี้ และ Status != pending
-  // 3. failedList = งาน Active ที่วัน < วันนี้ และ Status == pending (งานไม่สำเร็จ)
-  // 4. cancelledList = งาน Cancel
-   
+  
   let allNonCancelled = filtered.filter(b => b.status !== "cancelled");
   let cancelledList = filtered.filter(b => b.status === "cancelled");
 
   let upcomingList = allNonCancelled.filter(b => new Date(b.booking_date).setHours(0,0,0,0) >= nowDay);
-  // *** แก้ไข: แยก pending ที่เป็นอดีตไปอยู่ failedList ***
   let pastList = allNonCancelled.filter(b => new Date(b.booking_date).setHours(0,0,0,0) < nowDay && b.status !== 'pending');
   let failedList = allNonCancelled.filter(b => new Date(b.booking_date).setHours(0,0,0,0) < nowDay && b.status === 'pending');
-  // เรียงลำดับวันที่ (จากใกล้ไปไกล) ทุกกลุ่ม
+  
   const sortFunc = (a, b) => new Date(a.booking_date) - new Date(b.booking_date) ||
   (a.booking_time > b.booking_time ? 1 : -1);
    
@@ -392,9 +468,7 @@ async function showHistory() {
   failedList.sort(sortFunc);
   cancelledList.sort(sortFunc);
 
-  // [ADDED] Render Logic with Grouping
   const renderList = (list) => {
-    // Grouping by batch_id
     let grouped = {};
     let singles = [];
     
@@ -412,7 +486,6 @@ async function showHistory() {
       mixedList.push({ isSeries: true, items: grouped[k], sortDate: grouped[k][0].booking_date, batch_id: k });
     });
     
-    // Sort mixed list by date
     mixedList.sort((a, b) => {
       let dA = a.isSeries ? new Date(a.sortDate) : new Date(a.booking_date);
       let dB = b.isSeries ? new Date(b.sortDate) : new Date(b.booking_date);
@@ -423,69 +496,105 @@ async function showHistory() {
     return mixedList.map(item => item.isSeries ? renderSeriesCard(item) : renderCard(item)).join("");
   };
 
-  // 1. ส่วนรายการงานปัจจุบัน/อนาคต
+  // [OPTIMIZATION #2] Render upcoming first (most important)
   let html = "<h3 style='margin: 20px 0 10px 0;'>รายการงาน (เร็วๆ นี้)</h3>";
   if(upcomingList.length === 0) html += "<p style='color:#777;'>ไม่มีรายการงานที่กำลังจะมาถึง</p>";
   else html += renderList(upcomingList);
-  // 1.5 ส่วนรายการงานไม่สำเร็จ (New)
+  
+  // [OPTIMIZATION #2] Lazy load sections - render placeholders only
   if(failedList.length > 0) {
     html += `
       <div style="margin-top:25px; border-top: 1px dashed #ccc; padding-top:15px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0; color:#d9534f;">งานไม่สำเร็จ (หมดอายุ)</h3>
             <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;"
-            onclick="toggleFailed()">
+            onclick="loadFailedJobs()">
                 ⚠️ ดูรายละเอียด (${failedList.length})
             </button>
         </div>
-        <div id="failedArea" style="display:none; margin-top:15px;">
-           ${renderList(failedList)}
-        </div>
+        <div id="failedArea" style="display:none; margin-top:15px;"></div>
       </div>
     `;
   }
 
-  // 2. ส่วนประวัติงานที่สำเร็จ (Toggle)
   if(pastList.length > 0) {
     html += `
       <div style="margin-top:25px; border-top: 1px dashed #ccc; padding-top:15px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0; color:#666;">ประวัติงานที่สำเร็จ</h3>
             <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;"
-            onclick="togglePast()">
+            onclick="loadPastJobs()">
                 📜 ดูรายละเอียด (${pastList.length})
             </button>
         </div>
-        <div id="pastArea" style="display:none; margin-top:15px;">
-           ${renderList(pastList)}
-        </div>
+        <div id="pastArea" style="display:none; margin-top:15px;"></div>
       </div>
     `;
   }
 
-  // 3. ส่วนรายการยกเลิก (Toggle)
   if(cancelledList.length > 0) {
     html += `
       <div style="margin-top:25px; border-top: 1px dashed #ccc; padding-top:15px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0; color:#666;">รายการที่ถูกยกเลิก</h3>
             <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;"
-            onclick="toggleCancelled()">
+            onclick="loadCancelledJobs()">
                 👁️ ดูรายละเอียด (${cancelledList.length})
             </button>
         </div>
-        <div id="cancelledArea" style="display:none; margin-top:15px;">
-           ${renderList(cancelledList)}
-        </div>
+        <div id="cancelledArea" style="display:none; margin-top:15px;"></div>
       </div>
     `;
   }
 
   hBox.innerHTML = html;
   toggleLoad(false);
+  
+  // Store lists globally for lazy loading
+  window.cachedLists = {
+    failed: failedList,
+    past: pastList,
+    cancelled: cancelledList,
+    renderList: renderList
+  };
 }
 
-// ฟังก์ชันย่อยสำหรับ Render Card (Single)
+// [OPTIMIZATION #2] Lazy load functions
+function loadFailedJobs() {
+  const area = document.getElementById("failedArea");
+  if (area.style.display === "none") {
+    if (area.innerHTML === "") {
+      area.innerHTML = window.cachedLists.renderList(window.cachedLists.failed);
+    }
+    area.style.display = "block";
+  } else {
+    area.style.display = "none";
+  }
+}
+
+function loadPastJobs() {
+  const area = document.getElementById("pastArea");
+  if (area.style.display === "none") {
+    if (area.innerHTML === "") {
+      area.innerHTML = window.cachedLists.renderList(window.cachedLists.past);
+    }
+    area.style.display = "block";
+  } else {
+    area.style.display = "none";
+  }
+}
+
+function loadCancelledJobs() {
+  const area = document.getElementById("cancelledArea");
+  if (area.style.display === "none") {
+    if (area.innerHTML === "") {
+      area.innerHTML = window.cachedLists.renderList(window.cachedLists.cancelled);
+    }
+    area.style.display = "block";
+  } else {
+    area.style.display = "none";
+  }
+}
 const renderCard = (b) => {
     const nowDay = new Date().setHours(0,0,0,0);
     const isPast = new Date(b.booking_date).setHours(0,0,0,0) < nowDay;
