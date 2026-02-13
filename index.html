@@ -174,7 +174,7 @@
 </div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbya-2hR3nDx5eXcoszsCjrA2iK1NveHLPHgFJyT7KX6Y9eyYZAdLdMPWcLY5J0GkBve5w/exec";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbxEBHAy8rtY05hpSleqpsBNjSE6DCK1bvjwRP0zpkGEN-fdsKp29rS51PH-W21KbTNnQw/exec";
 let userId = "", role = "", mobile = "", displayName = "";
 let driverListCache = [];
 let currentBookingIdToAssign = null;
@@ -582,7 +582,7 @@ function closeAssignModal() {
     currentBookingIdToAssign = null;
 }
 
-// [FIXED] confirmAssign — ดึงค่าและ confirm() ก่อนทุกอย่าง ไม่มี await นำหน้า confirm เด็ดขาด
+// [FIXED FINAL] confirmAssign — ดึงค่าทั้งหมดก่อน, ปิด modal, confirm, แล้วใช้ setTimeout เพื่อ break execution context
 function confirmAssign() {
     const drvId = document.getElementById("modal_driver_select").value;
     if(!drvId) return alert("กรุณาเลือกคนขับที่ต้องการมอบหมาย");
@@ -591,28 +591,38 @@ function confirmAssign() {
     const drvName = selectElem.options[selectElem.selectedIndex].text;
     const bookingIdToSend = currentBookingIdToAssign;
 
-    // ปิด modal และ confirm() ก่อน — ยังไม่มี await ใดๆ ทั้งสิ้น
     document.getElementById("assignModal").style.display = "none";
     currentBookingIdToAssign = null;
 
     if(!confirm(`ทบทวนรายการ:\nมอบหมายงานให้: ${drvName}\nยืนยันหรือไม่?`)) return;
 
-    // confirm() ผ่านแล้ว — จึงเริ่ม async fetch ได้
-    toggleLoad(true);
-    fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ 
-        action: "assign_driver", 
-        booking_id: bookingIdToSend, 
-        assign_driver_id: drvId 
-    }) })
-    .then(function(r) { return r.json(); })
-    .then(function() {
-        alert("มอบหมายงานเรียบร้อย");
-        return showHistory();
-    })
-    .catch(function(err) {
-        alert("เกิดข้อผิดพลาด: " + err);
-        toggleLoad(false);
-    });
+    // [CRITICAL FIX] ใช้ setTimeout(0) เพื่อ break execution context ออกจาก confirm()
+    // ป้องกัน LIFF WebView block network request หลัง synchronous dialog
+    setTimeout(function() {
+        toggleLoad(true);
+        fetch(ENDPOINT, { 
+            method: "POST", 
+            body: JSON.stringify({ 
+                action: "assign_driver", 
+                booking_id: bookingIdToSend, 
+                assign_driver_id: drvId 
+            }) 
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if(data.success) {
+                alert("มอบหมายงานเรียบร้อย");
+                return showHistory();
+            } else {
+                alert("เกิดข้อผิดพลาด: " + (data.msg || "ไม่ทราบสาเหตุ"));
+                toggleLoad(false);
+            }
+        })
+        .catch(function(err) {
+            alert("เกิดข้อผิดพลาด: " + err);
+            toggleLoad(false);
+        });
+    }, 0);
 }
 
 async function acknowledgeJob(id) {
