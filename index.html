@@ -512,26 +512,24 @@ const renderSeriesCard = (group) => {
     // Generate sub-cards
     const subCards = items.map(renderCard).join("");
     
-    // สร้างรายการแต่ละวัน (เรียงตามวันที่)
+    // สร้างรายการวันที่ทั้งหมด (เรียงตามวันที่)
     const sortedItems = [...items].sort((a, b) => new Date(a.booking_date) - new Date(b.booking_date));
     
-    const summaryList = sortedItems.map(item => {
+    const dateList = sortedItems.map(item => {
         const d = new Date(item.booking_date);
         const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
-        const dateStr = `${d.getDate()} ${months[d.getMonth()]}`;
-        const timeStr = String(item.booking_time).includes("T") 
-            ? new Date(item.booking_time).getHours().toString().padStart(2,'0')+":"+new Date(item.booking_time).getMinutes().toString().padStart(2,'0')
-            : String(item.booking_time).substring(0,5);
-        
-        return `<div style="font-size:14px; margin:4px 0; padding:6px; background:#f8f9fa; border-radius:6px;">
-            <b>${dateStr}</b> | ${timeStr} น.<br>
-            📍 ${item.pickup_location} ➡️ ${item.dropoff_location}
-        </div>`;
-    }).join("");
+        return `${d.getDate()} ${months[d.getMonth()]}`;
+    }).join(" / ");
+    
+    // ใช้ข้อมูลจากงานแรก (เวลาและเส้นทางควรเหมือนกันทั้งหมด)
+    const firstItem = sortedItems[0];
+    const timeStr = String(firstItem.booking_time).includes("T") 
+        ? new Date(firstItem.booking_time).getHours().toString().padStart(2,'0')+":"+new Date(firstItem.booking_time).getMinutes().toString().padStart(2,'0')
+        : String(firstItem.booking_time).substring(0,5);
     
     return `
       <div class="card series-card">
-         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <b style="font-size:16px;">📦 งานต่อเนื่อง (${total} วัน)</b>
             <span style="font-size:13px;">
                <span style="color:#28a745; font-weight:bold;">✅ ${confirmedCount}</span> | 
@@ -539,8 +537,13 @@ const renderSeriesCard = (group) => {
             </span>
          </div>
          
-         <div style="margin-bottom:10px;">
-            ${summaryList}
+         <div style="margin-bottom:8px;">
+            <div class="val-text" style="font-size:14px; color:#555; margin-bottom:4px;">
+               วันที่ ${dateList}
+            </div>
+            <div class="val-text" style="font-size:14px;">
+               | ${timeStr} น.  📍 <b>${firstItem.pickup_location} ➡️ ${firstItem.dropoff_location}</b>
+            </div>
          </div>
          
          ${canAcceptAll ? `<button class="success" style="margin-bottom:8px;" onclick="acceptSeries('${group.batch_id}')">✅✅ รับงานทั้งหมด (${pendingCount} วัน)</button>` : ''}
