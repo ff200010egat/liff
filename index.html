@@ -66,7 +66,6 @@
   }
   /* [ADDED] Styles for Series Card */
   .series-card { border-left: 5px solid #0a7cff; background: #f0f7ff; }
-  .series-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
 </style>
 </head>
 <body>
@@ -513,19 +512,38 @@ const renderSeriesCard = (group) => {
     // Generate sub-cards
     const subCards = items.map(renderCard).join("");
     
+    // สร้างรายการแต่ละวัน (เรียงตามวันที่)
+    const sortedItems = [...items].sort((a, b) => new Date(a.booking_date) - new Date(b.booking_date));
+    
+    const summaryList = sortedItems.map(item => {
+        const d = new Date(item.booking_date);
+        const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+        const dateStr = `${d.getDate()} ${months[d.getMonth()]}`;
+        const timeStr = String(item.booking_time).includes("T") 
+            ? new Date(item.booking_time).getHours().toString().padStart(2,'0')+":"+new Date(item.booking_time).getMinutes().toString().padStart(2,'0')
+            : String(item.booking_time).substring(0,5);
+        
+        return `<div style="font-size:14px; margin:4px 0; padding:6px; background:#f8f9fa; border-radius:6px;">
+            <b>${dateStr}</b> | ${timeStr} น.<br>
+            📍 ${item.pickup_location} ➡️ ${item.dropoff_location}
+        </div>`;
+    }).join("");
+    
     return `
       <div class="card series-card">
-         <div class="series-header">
-            <div>
-               <b>📦 งานต่อเนื่อง (${total} วัน)</b><br>
-               <span style="font-size:12px; color:#666;">${items[0].pickup_location} ...</span>
-            </div>
-            <div style="text-align:right; font-size:12px;">
-               <span style="color:#28a745">✅ ${confirmedCount}</span> | 
-               <span style="color:#f39c12">⏳ ${pendingCount}</span>
-            </div>
+         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <b style="font-size:16px;">📦 งานต่อเนื่อง (${total} วัน)</b>
+            <span style="font-size:13px;">
+               <span style="color:#28a745; font-weight:bold;">✅ ${confirmedCount}</span> | 
+               <span style="color:#f39c12; font-weight:bold;">⏳ ${pendingCount}</span>
+            </span>
          </div>
-         ${canAcceptAll ? `<button class="success" style="margin-bottom:10px;" onclick="acceptSeries('${group.batch_id}')">✅✅ รับงานทั้งหมด (${pendingCount} วัน)</button>` : ''}
+         
+         <div style="margin-bottom:10px;">
+            ${summaryList}
+         </div>
+         
+         ${canAcceptAll ? `<button class="success" style="margin-bottom:8px;" onclick="acceptSeries('${group.batch_id}')">✅✅ รับงานทั้งหมด (${pendingCount} วัน)</button>` : ''}
          <button class="secondary" onclick="document.getElementById('series_${group.batch_id}').style.display = (document.getElementById('series_${group.batch_id}').style.display=='none'?'block':'none')">
             📜 ดูรายละเอียด / ซ่อน
          </button>
