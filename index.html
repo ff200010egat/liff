@@ -246,12 +246,37 @@ function toggleBookingMode() {
      btn.style.background = "#fff3cd"; // Yellowish
      btn.style.color = "#856404";
      btn.style.borderColor = "#ffeeba";
-     label.innerText = "(เลือกได้หลายวัน)";
-     // Re-init Flatpickr as multiple
+     label.innerText = "(เลือกได้หลายวัน - ภายในเดือนเดียวกัน)";
+     // Re-init Flatpickr as multiple with month restriction
      fpInstance.destroy();
-     fpInstance = flatpickr("#booking_date", { mode: "multiple", dateFormat: "Y-m-d", minDate: "today", disableMobile: "true",
+     fpInstance = flatpickr("#booking_date", { 
+        mode: "multiple", 
+        dateFormat: "Y-m-d", 
+        minDate: "today", 
+        disableMobile: "true",
         onChange: function(selectedDates) {
           document.getElementById("selectedDatesList").innerText = `เลือกแล้ว ${selectedDates.length} วัน: ` + selectedDates.map(d => d.getDate()+"/"+(d.getMonth()+1)).join(", ");
+        },
+        // [ADDED] จำกัดให้เลือกได้เฉพาะเดือนเดียวกัน
+        enable: [
+          function(date) {
+            // ถ้ายังไม่มีวันที่เลือก → เลือกได้ทุกวัน (หลัง today)
+            const selected = fpInstance.selectedDates;
+            if (selected.length === 0) return true;
+            
+            // ถ้ามีวันที่เลือกแล้ว → เลือกได้เฉพาะเดือนเดียวกับวันแรก
+            const firstDate = selected[0];
+            return date.getMonth() === firstDate.getMonth() && 
+                   date.getFullYear() === firstDate.getFullYear();
+          }
+        ],
+        onMonthChange: function(selectedDates, dateStr, instance) {
+          // ถ้ามีวันที่เลือกแล้ว → กลับไปเดือนเดิม
+          if (selectedDates.length > 0) {
+            const firstDate = selectedDates[0];
+            instance.changeMonth(firstDate.getMonth() - instance.currentMonth, false);
+            instance.changeYear(firstDate.getFullYear() - instance.currentYear);
+          }
         }
      });
   } else {
@@ -664,6 +689,19 @@ async function submitBooking() {
   // [MODIFIED] Use Flatpickr dates
   const selectedDates = fpInstance.selectedDates;
   if (selectedDates.length === 0) { alert("กรุณาระบุวันที่"); return; }
+  
+  // [ADDED] ตรวจสอบว่าวันที่ทั้งหมดอยู่ในเดือนเดียวกัน (สำหรับ Series mode)
+  if (isSeriesMode && selectedDates.length > 1) {
+    const firstMonth = selectedDates[0].getMonth();
+    const firstYear = selectedDates[0].getFullYear();
+    const allSameMonth = selectedDates.every(d => 
+      d.getMonth() === firstMonth && d.getFullYear() === firstYear
+    );
+    if (!allSameMonth) {
+      alert("⚠️ งานต่อเนื่อง (Series) ต้องอยู่ในเดือนเดียวกันเท่านั้น\nกรุณาเลือกวันที่ใหม่");
+      return;
+    }
+  }
   
   const bTime = document.getElementById("booking_time").value;
   if(!bTime) { alert("กรุณาระบุเวลา"); return; }
