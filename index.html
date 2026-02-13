@@ -325,7 +325,7 @@ function toggleBookingMode() {
   const label = document.getElementById("modeLabel");
   
   if (isSeriesMode) {
-     btn.innerHTML = "🔄 โหมด: <b>จองต่อเนื่อง (Series)</b>";
+     btn.innerHTML = "🔄 โหมด: <b>จองเป็นชุด (Series)</b>";
      btn.style.background = "#fff3cd"; // Yellowish
      btn.style.color = "#856404";
      btn.style.borderColor = "#ffeeba";
@@ -664,7 +664,7 @@ const renderSeriesCard = (group) => {
     return `
       <div class="card series-card">
          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <b style="font-size:16px;">📦 งานต่อเนื่อง (${total} วัน)</b>
+            <b style="font-size:16px;">📦 งานเป็นชุด (${total} งาน)</b>
             <span style="font-size:13px;">
                <span style="color:#28a745; font-weight:bold;">✅ ${confirmedCount}</span> | 
                <span style="color:#f39c12; font-weight:bold;">⏳ ${pendingCount}</span>
@@ -814,7 +814,7 @@ async function submitBooking() {
       d.getMonth() === firstMonth && d.getFullYear() === firstYear
     );
     if (!allSameMonth) {
-      alert("⚠️ งานต่อเนื่อง (Series) ต้องอยู่ในเดือนเดียวกันเท่านั้น\nกรุณาเลือกวันที่ใหม่");
+      alert("⚠️ งานเป็นชุด (Series) ต้องอยู่ในเดือนเดียวกันเท่านั้น\nกรุณาเลือกวันที่ใหม่");
       return;
     }
   }
