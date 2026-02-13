@@ -174,7 +174,7 @@
 </div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbxEBHAy8rtY05hpSleqpsBNjSE6DCK1bvjwRP0zpkGEN-fdsKp29rS51PH-W21KbTNnQw/exec";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbwvGpDpGINMaKTDW8OOf1wSnLDgnGKma7qKSI5jo_Znu3Jk88-HNFPp4o0aY5-i_uQSmA/exec";
 let userId = "", role = "", mobile = "", displayName = "";
 let driverListCache = [];
 let currentBookingIdToAssign = null;
@@ -582,8 +582,8 @@ function closeAssignModal() {
     currentBookingIdToAssign = null;
 }
 
-// [FIXED FINAL] confirmAssign — ดึงค่าทั้งหมดก่อน, ปิด modal, confirm, แล้วใช้ setTimeout เพื่อ break execution context
-function confirmAssign() {
+// [FIXED FINAL] confirmAssign — ใช้ pattern เดียวกับ acceptJob ที่ทำงานได้ปกติ
+async function confirmAssign() {
     const drvId = document.getElementById("modal_driver_select").value;
     if(!drvId) return alert("กรุณาเลือกคนขับที่ต้องการมอบหมาย");
 
@@ -591,38 +591,27 @@ function confirmAssign() {
     const drvName = selectElem.options[selectElem.selectedIndex].text;
     const bookingIdToSend = currentBookingIdToAssign;
 
-    document.getElementById("assignModal").style.display = "none";
-    currentBookingIdToAssign = null;
+    closeAssignModal();
 
     if(!confirm(`ทบทวนรายการ:\nมอบหมายงานให้: ${drvName}\nยืนยันหรือไม่?`)) return;
 
-    // [CRITICAL FIX] ใช้ setTimeout(0) เพื่อ break execution context ออกจาก confirm()
-    // ป้องกัน LIFF WebView block network request หลัง synchronous dialog
-    setTimeout(function() {
-        toggleLoad(true);
-        fetch(ENDPOINT, { 
+    toggleLoad(true);
+    try {
+        // ใช้ pattern เดียวกับ acceptJob ที่ work
+        await fetch(ENDPOINT, { 
             method: "POST", 
             body: JSON.stringify({ 
                 action: "assign_driver", 
                 booking_id: bookingIdToSend, 
                 assign_driver_id: drvId 
             }) 
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if(data.success) {
-                alert("มอบหมายงานเรียบร้อย");
-                return showHistory();
-            } else {
-                alert("เกิดข้อผิดพลาด: " + (data.msg || "ไม่ทราบสาเหตุ"));
-                toggleLoad(false);
-            }
-        })
-        .catch(function(err) {
-            alert("เกิดข้อผิดพลาด: " + err);
-            toggleLoad(false);
         });
-    }, 0);
+        alert("มอบหมายงานเรียบร้อย");
+        await showHistory();
+    } catch(err) {
+        alert("เกิดข้อผิดพลาด: " + err.message);
+        toggleLoad(false);
+    }
 }
 
 async function acknowledgeJob(id) {
