@@ -5,41 +5,68 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CAR bookings MMSC</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
 <style>
-  body { font-family: system-ui, -apple-system, sans-serif; padding:16px; background:#f0f2f5; color:#333; margin:0; position: relative; }
-  .card { background:#fff; padding:16px; border-radius:12px; margin-bottom:12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); border:1px solid #eee; }
+  body { font-family: system-ui, -apple-system, sans-serif; padding:16px; background:#f0f2f5; color:#333; margin:0;
+  position: relative; }
+  .card { background:#fff; padding:16px; border-radius:12px; margin-bottom:12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); border:1px solid #eee;
+  }
   .card.past-job { opacity: 0.6; background: #f8f9fa; filter: grayscale(0.5); }
-  h2 { font-size:22px; color:#0a7cff; margin-bottom:5px; }
+  h2 { font-size:22px; color:#0a7cff; margin-bottom:5px;
+  }
     
-  .profile-container { display: flex; align-items: center; gap: 12px; margin-bottom: 5px; }
-  #profileImg { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); object-fit: cover; display: none; }
+  .profile-container { display: flex; align-items: center; gap: 12px; margin-bottom: 5px;
+  }
+  #profileImg { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  object-fit: cover; display: none; }
     
   #username { font-weight:bold; font-size:18px; }
-  #roleBadge { display:inline-block; padding:3px 10px; border-radius:15px; background:#e4e6eb; font-size:12px; margin-bottom:15px; font-weight:600; }
+  #roleBadge { display:inline-block;
+  padding:3px 10px; border-radius:15px; background:#e4e6eb; font-size:12px; margin-bottom:15px; font-weight:600; }
     
-  button { width:100%; padding:14px; font-size:16px; border-radius:10px; border:none; margin-bottom:8px; cursor: pointer; font-weight:bold; }
+  button { width:100%; padding:14px; font-size:16px; border-radius:10px; border:none;
+  margin-bottom:8px; cursor: pointer; font-weight:bold; }
   .primary { background:#0a7cff; color:#fff; }
-  .secondary { background:#e4e6eb; color:#4b4f56; }
+  .secondary { background:#e4e6eb; color:#4b4f56;
+  }
   .success { background:#28a745; color:#fff; }
   .warning { background:#f39c12; color:#fff; }
-  .danger { background:#fff1f0; color:#ff4d4f; border:1px solid #ffccc7; padding:10px; font-size:14px; }
+  .danger { background:#fff1f0; color:#ff4d4f;
+  border:1px solid #ffccc7; padding:10px; font-size:14px; }
     
-  label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #555; }
-  input, select { width:100%; padding:12px; box-sizing: border-box; font-size:16px; margin-bottom:12px; border-radius:8px; border:1px solid #ddd; background: #fff; }
+  label { display: block; font-weight: bold; margin-bottom: 5px;
+  font-size: 14px; color: #555; }
+  input, select { width:100%; padding:12px; box-sizing: border-box; font-size:16px; margin-bottom:12px; border-radius:8px; border:1px solid #ddd;
+  background: #fff; }
     
   #formBox { display:none; }
-  .val-text { font-size:15px; margin-bottom:5px; line-height: 1.4; }
+  .val-text { font-size:15px; margin-bottom:5px; line-height: 1.4;
+  }
 
-  .admin-tools { position: absolute; top: 15px; right: 15px; display: flex; gap: 8px; align-items: center; }
-  .admin-btn { font-size: 18px; cursor: pointer; background: #fff; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-decoration: none; color: inherit; }
-  .admin-lock { font-size: 20px; cursor: pointer; background: #fff; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+  .admin-tools { position: absolute; top: 15px; right: 15px; display: flex; gap: 8px; align-items: center;
+  }
+  .admin-btn { font-size: 18px; cursor: pointer; background: #fff; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center;
+  justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-decoration: none; color: inherit; }
+  .admin-lock { font-size: 20px; cursor: pointer;
+  background: #fff; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
 
-  #loading { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; }
-  .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #0a7cff; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; }
-  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  #loading { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column;
+  }
+  .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #0a7cff; border-radius: 50%; width: 45px; height: 45px;
+  animation: spin 1s linear infinite; }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg);
+  } }
 
   .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center; }
-  .modal-box { background:#fff; padding:20px; border-radius:12px; width:85%; max-width:320px; text-align:center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  .modal-box { background:#fff;
+  padding:20px; border-radius:12px; width:85%; max-width:320px; text-align:center; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  /* [ADDED] Styles for Series Card */
+  .series-card { border-left: 5px solid #0a7cff; background: #f0f7ff; }
+  .series-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
 </style>
 </head>
 <body>
@@ -64,7 +91,8 @@
   </div>
     
   <div id="roleBadge">...</div>
-  <div id="driverMobileArea" style="font-size: 14px; color: #666; margin-top: -10px; margin-bottom: 15px; font-weight: bold;"></div>
+  <div id="driverMobileArea" style="font-size: 14px;
+  color: #666; margin-top: -10px; margin-bottom: 15px; font-weight: bold;"></div>
 
   <div id="actionArea">
     <button id="bookBtn" class="primary">...</button>
@@ -72,7 +100,12 @@
   </div>
 
   <div id="formBox" class="card">
-    <h3 style="margin-top:0; color:#0a7cff;">กรอกรายละเอียดงาน</h3>
+    <h3 style="margin-top:0;
+    color:#0a7cff;">กรอกรายละเอียดงาน</h3>
+
+    <div style="margin-bottom:12px;">
+      <button type="button" id="modeToggle" class="secondary" style="background:#e3f2fd; color:#0a7cff; border:1px solid #0a7cff;" onclick="toggleBookingMode()">🔄 โหมด: จองครั้งเดียว</button>
+    </div>
 
     <div id="adminAssignArea" style="display:none;">
       <label>🏎 มอบหมายคนขับ (Admin Only)</label>
@@ -81,15 +114,17 @@
       </select>
     </div>
       
-    <label>📅 วันที่เดินทาง</label>
-    <input type="date" id="booking_date">
+    <label>📅 วันที่เดินทาง <span id="modeLabel" style="font-weight:normal; color:#666; font-size:12px;">(เลือก 1 วัน)</span></label>
+    <input type="text" id="booking_date" placeholder="จิ้มเพื่อเลือกวันที่..." readonly="readonly" style="background-color: #fff;">
+    <div id="selectedDatesList" style="margin-bottom:10px; font-size:14px; color:#666; font-style:italic;"></div>
       
     <label>⏰ เวลาเดินทาง</label>
     <input type="time" id="booking_time">
       
     <label>🚗 ประเภทรถ</label>
     <select id="vehicle_type">
-      <option value="ไม่ระบุ">ไม่ระบุ</option>
+      <option 
+      value="ไม่ระบุ">ไม่ระบุ</option>
       <option value="รถเก๋ง">รถเก๋ง</option>
       <option value="รถกระบะ">รถกระบะ</option>
       <option value="รถตู้">รถตู้</option>
@@ -125,11 +160,14 @@
 </div>
 
 <div id="assignModal" class="modal-overlay">
-  <div class="modal-box">
+  
+<div class="modal-box">
     <h3 style="color:#0a7cff; margin-top:0;">เลือกคนขับ</h3>
-    <p style="font-size:14px; color:#666; margin-bottom:10px;">เลือกรายชื่อเพื่อมอบหมายงานนี้</p>
+    <p style="font-size:14px; color:#666;
+    margin-bottom:10px;">เลือกรายชื่อเพื่อมอบหมายงานนี้</p>
     <select id="modal_driver_select" style="margin-bottom:20px;"></select>
-    <div style="display:flex; gap:10px;">
+    <div style="display:flex;
+    gap:10px;">
       <button class="primary" onclick="confirmAssign()">ยืนยัน</button>
       <button class="secondary" onclick="closeAssignModal()">ยกเลิก</button>
     </div>
@@ -137,10 +175,13 @@
 </div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbxSAyVLk-sYMoTCKycsJ0_5KgrmN0IdsIGpzdyeCZxV0v1JGJuLpvG_1ugZW7WHxrfWeg/exec";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbwC51rAEy9XS7TeGfcGLY38U036JVuNrwSMKQkGLrNipBqtiCt9MPl3pPecZOxJav9WIw/exec";
 let userId = "", role = "", mobile = "", displayName = "";
 let driverListCache = [];
 let currentBookingIdToAssign = null;
+// [ADDED] Global variables for Series feature
+let isSeriesMode = false;
+let fpInstance = null;
 
 function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
 
@@ -149,7 +190,8 @@ function formatThaiDateTime(dateVal, timeVal) {
   const d = new Date(dateVal);
   const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
   const dateStr = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
-  let timeStr = String(timeVal).includes("T") ? new Date(timeVal).getHours().toString().padStart(2,'0')+":"+new Date(timeVal).getMinutes().toString().padStart(2,'0') : String(timeVal).substring(0,5);
+  let timeStr = String(timeVal).includes("T") ? new 
+  Date(timeVal).getHours().toString().padStart(2,'0')+":"+new Date(timeVal).getMinutes().toString().padStart(2,'0') : String(timeVal).substring(0,5);
   return dateStr + " | " + timeStr + " น.";
 }
 
@@ -172,8 +214,59 @@ async function init() {
     role = res.role;
     mobile = res.mobile; 
     renderUI();
+    // [ADDED] Init Flatpickr
+    initFlatpickr();
     await showHistory();
-  } catch (err) { alert(err); toggleLoad(false); }
+  } catch (err) { alert(err); toggleLoad(false);
+  }
+}
+
+// [ADDED] Flatpickr Initialization and Toggle
+function initFlatpickr() {
+  const cfg = {
+    dateFormat: "Y-m-d",
+    minDate: "today",
+    disableMobile: "true",
+    onChange: function(selectedDates, dateStr, instance) {
+       if(isSeriesMode) {
+          document.getElementById("selectedDatesList").innerText = `เลือกแล้ว ${selectedDates.length} วัน: ` + selectedDates.map(d => d.getDate()+"/"+(d.getMonth()+1)).join(", ");
+       } else {
+          document.getElementById("selectedDatesList").innerText = "";
+       }
+    }
+  };
+  fpInstance = flatpickr("#booking_date", cfg);
+}
+
+function toggleBookingMode() {
+  isSeriesMode = !isSeriesMode;
+  const btn = document.getElementById("modeToggle");
+  const label = document.getElementById("modeLabel");
+  
+  if (isSeriesMode) {
+     btn.innerHTML = "🔄 โหมด: <b>จองต่อเนื่อง (Series)</b>";
+     btn.style.background = "#fff3cd"; // Yellowish
+     btn.style.color = "#856404";
+     btn.style.borderColor = "#ffeeba";
+     label.innerText = "(เลือกได้หลายวัน)";
+     // Re-init Flatpickr as multiple
+     fpInstance.destroy();
+     fpInstance = flatpickr("#booking_date", { mode: "multiple", dateFormat: "Y-m-d", minDate: "today", disableMobile: "true",
+        onChange: function(selectedDates) {
+          document.getElementById("selectedDatesList").innerText = `เลือกแล้ว ${selectedDates.length} วัน: ` + selectedDates.map(d => d.getDate()+"/"+(d.getMonth()+1)).join(", ");
+        }
+     });
+  } else {
+     btn.innerHTML = "🔄 โหมด: <b>จองครั้งเดียว</b>";
+     btn.style.background = "#e3f2fd"; // Blueish
+     btn.style.color = "#0a7cff";
+     btn.style.borderColor = "#0a7cff";
+     label.innerText = "(เลือก 1 วัน)";
+     document.getElementById("selectedDatesList").innerText = "";
+     // Re-init Flatpickr as single
+     fpInstance.destroy();
+     fpInstance = flatpickr("#booking_date", { mode: "single", dateFormat: "Y-m-d", minDate: "today", disableMobile: "true" });
+  }
 }
 
 function renderUI() {
@@ -184,7 +277,6 @@ function renderUI() {
   const adminLockBtn = document.getElementById("adminLockBtn");
   const calBtn = document.getElementById("calBtn");
   const dashBtn = document.getElementById("dashBtn");
-    
   if (role === "admin") {
     document.getElementById("roleBadge").innerText = "🛡️ ผู้ดูแลระบบ (Admin)";
     bookBtn.innerText = "➕ ลงงานใหม่ (ในนาม Admin)";
@@ -216,15 +308,16 @@ function renderUI() {
     adminLockBtn.onclick = becomeAdmin;
   }
 
-  mobileArea.innerText = (role === "driver" && mobile) ? "📞 เบอร์โทร: " + mobile : "";
+  mobileArea.innerText = (role === "driver" && mobile) ?
+  "📞 เบอร์โทร: " + mobile : "";
   bookBtn.onclick = () => { document.getElementById("formBox").style.display = "block"; window.scrollTo(0,0); };
-    
   let toggleHtml = "";
   if (role === "admin") {
     toggleHtml = `<button class="secondary" style="background:#fff1f0; color:#ff4d4f;" onclick="cancelAdminRole()">ยกเลิกสถานะ Admin</button>`;
   } else if (role === "driver") {
     toggleHtml = `<button class="secondary" onclick="editDriverMobile()">📞 แก้ไขเบอร์โทรคนขับ</button>
-                  <button class="secondary" style="background:#fff1f0; color:#ff4d4f;" onclick="cancelDriverRole()">ยกเลิกบทบาทพนักงานขับรถ</button>`;
+                  <button class="secondary" style="background:#fff1f0; color:#ff4d4f;"
+  onclick="cancelDriverRole()">ยกเลิกบทบาทพนักงานขับรถ</button>`;
   } else {
     toggleHtml = `<button class="secondary" onclick="registerDriver()">สมัครเป็นพนักงานขับรถ</button>`;
   }
@@ -243,18 +336,17 @@ async function loadDriversList() {
   }
 }
 
+// [MODIFIED] Update showHistory to support Grouping
 async function showHistory() {
   toggleLoad(true);
   const hBox = document.getElementById("historyBox");
   const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => r.json());
-    
   const nowDay = new Date().setHours(0,0,0,0);
   let filtered = (res.data || []).filter(b => {
     if (role === "admin") return true;
     if (role === "driver") return (b.booked_by === userId || b.driver_line_id === userId || b.status === "pending");
     return (b.booked_by === userId);
   });
-
   // แยกรายการ 3 กลุ่ม (ปรับปรุงใหม่):
   // 1. upcomingList = งาน Active (ไม่ Cancel) ที่วัน >= วันนี้
   // 2. pastList = งาน Active (ไม่ Cancel) ที่วัน < วันนี้ และ Status != pending
@@ -265,70 +357,66 @@ async function showHistory() {
   let cancelledList = filtered.filter(b => b.status === "cancelled");
 
   let upcomingList = allNonCancelled.filter(b => new Date(b.booking_date).setHours(0,0,0,0) >= nowDay);
-  
   // *** แก้ไข: แยก pending ที่เป็นอดีตไปอยู่ failedList ***
   let pastList = allNonCancelled.filter(b => new Date(b.booking_date).setHours(0,0,0,0) < nowDay && b.status !== 'pending');
   let failedList = allNonCancelled.filter(b => new Date(b.booking_date).setHours(0,0,0,0) < nowDay && b.status === 'pending');
-
   // เรียงลำดับวันที่ (จากใกล้ไปไกล) ทุกกลุ่ม
-  const sortFunc = (a, b) => new Date(a.booking_date) - new Date(b.booking_date) || (a.booking_time > b.booking_time ? 1 : -1);
+  const sortFunc = (a, b) => new Date(a.booking_date) - new Date(b.booking_date) ||
+  (a.booking_time > b.booking_time ? 1 : -1);
    
   upcomingList.sort(sortFunc);
   pastList.sort(sortFunc);
   failedList.sort(sortFunc);
   cancelledList.sort(sortFunc);
 
-  // ฟังก์ชันย่อยสำหรับ Render Card
-  const renderCard = (b) => {
-    const isPast = new Date(b.booking_date).setHours(0,0,0,0) < nowDay;
-    const isCancelled = b.status === "cancelled";
-    let statusColor = (b.status === "pending") ? "#f39c12" : (isCancelled ? "#d9534f" : "#28a745");
+  // [ADDED] Render Logic with Grouping
+  const renderList = (list) => {
+    // Grouping by batch_id
+    let grouped = {};
+    let singles = [];
+    
+    list.forEach(b => {
+      if(b.batch_id) {
+        if(!grouped[b.batch_id]) grouped[b.batch_id] = [];
+        grouped[b.batch_id].push(b);
+      } else {
+        singles.push(b);
+      }
+    });
 
-    let ackBtn = "";
-    if (role === "driver" && b.driver_line_id === userId && b.status === "confirmed") {
-        ackBtn = `<button class="warning" onclick="acknowledgeJob('${b.booking_id}')">👌 รับทราบงานนี้แล้ว</button>`;
-    }
+    let mixedList = [...singles];
+    Object.keys(grouped).forEach(k => {
+      mixedList.push({ isSeries: true, items: grouped[k], sortDate: grouped[k][0].booking_date, batch_id: k });
+    });
+    
+    // Sort mixed list by date
+    mixedList.sort((a, b) => {
+      let dA = a.isSeries ? new Date(a.sortDate) : new Date(a.booking_date);
+      let dB = b.isSeries ? new Date(b.sortDate) : new Date(b.booking_date);
+      return dA - dB;
+    });
 
-    let adminAssignBtn = "";
-    if (role === "admin" && !isCancelled) {
-        adminAssignBtn = `<button class="primary" style="background:#17a2b8; margin-bottom:8px;" onclick="openAssignModal('${b.booking_id}')">👤 มอบหมายงาน (Admin)</button>`;
-    }
-
-    return `
-      <div class="card ${ (isPast || isCancelled) ? 'past-job' : '' }">
-        <div class="val-text"><b>${b.pickup_location} ➡️ ${b.dropoff_location}</b></div>
-        <div class="val-text">📅 ${formatThaiDateTime(b.booking_date, b.booking_time)}</div>
-        <div class="val-text">👤 จองโดย: ${b.user_display_name} | 🚗 ${b.vehicle_type}</div>
-        <div class="val-text">สถานะ: <span style="font-weight:bold; color:${statusColor}">${b.status.toUpperCase()} ${b.driver_name ? '('+b.driver_name+')' : ''}</span></div>
-        ${(role === "driver" && b.status === "pending" && !isPast) ? `<button class="success" onclick="acceptJob('${b.booking_id}')">✅ รับงานนี้</button>` : ""}
-        ${ackBtn}
-         
-        <div style="display:flex; gap:5px;">
-           <div style="width:100%">${adminAssignBtn}</div>
-        </div>
-
-        ${((b.booked_by === userId || b.driver_line_id === userId || role === "admin") && !isCancelled) ? `<button class="danger" onclick="cancelBooking('${b.booking_id}')">❌ ยกเลิกงานนี้</button>` : ""}
-      </div>
-    `;
+    if (mixedList.length === 0) return "";
+    return mixedList.map(item => item.isSeries ? renderSeriesCard(item) : renderCard(item)).join("");
   };
 
   // 1. ส่วนรายการงานปัจจุบัน/อนาคต
   let html = "<h3 style='margin: 20px 0 10px 0;'>รายการงาน (เร็วๆ นี้)</h3>";
   if(upcomingList.length === 0) html += "<p style='color:#777;'>ไม่มีรายการงานที่กำลังจะมาถึง</p>";
-  else html += upcomingList.map(renderCard).join("");
-
+  else html += renderList(upcomingList);
   // 1.5 ส่วนรายการงานไม่สำเร็จ (New)
   if(failedList.length > 0) {
     html += `
       <div style="margin-top:25px; border-top: 1px dashed #ccc; padding-top:15px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0; color:#d9534f;">งานไม่สำเร็จ (หมดอายุ)</h3>
-            <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;" onclick="toggleFailed()">
+            <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;"
+            onclick="toggleFailed()">
                ⚠️ ดูรายละเอียด (${failedList.length})
             </button>
         </div>
         <div id="failedArea" style="display:none; margin-top:15px;">
-           ${failedList.map(renderCard).join("")}
+           ${renderList(failedList)}
         </div>
       </div>
     `;
@@ -340,12 +428,13 @@ async function showHistory() {
       <div style="margin-top:25px; border-top: 1px dashed #ccc; padding-top:15px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0; color:#666;">ประวัติงานที่สำเร็จ</h3>
-            <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;" onclick="togglePast()">
+            <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;"
+            onclick="togglePast()">
                📜 ดูรายละเอียด (${pastList.length})
             </button>
         </div>
         <div id="pastArea" style="display:none; margin-top:15px;">
-           ${pastList.map(renderCard).join("")}
+           ${renderList(pastList)}
         </div>
       </div>
     `;
@@ -357,12 +446,13 @@ async function showHistory() {
       <div style="margin-top:25px; border-top: 1px dashed #ccc; padding-top:15px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0; color:#666;">รายการที่ถูกยกเลิก</h3>
-            <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;" onclick="toggleCancelled()">
+            <button class="secondary" style="width:auto; padding:8px 15px; font-size:14px; margin:0;"
+            onclick="toggleCancelled()">
                👁️ ดูรายละเอียด (${cancelledList.length})
             </button>
         </div>
         <div id="cancelledArea" style="display:none; margin-top:15px;">
-           ${cancelledList.map(renderCard).join("")}
+           ${renderList(cancelledList)}
         </div>
       </div>
     `;
@@ -371,6 +461,81 @@ async function showHistory() {
   hBox.innerHTML = html;
   toggleLoad(false);
 }
+
+// ฟังก์ชันย่อยสำหรับ Render Card (Single)
+const renderCard = (b) => {
+    const nowDay = new Date().setHours(0,0,0,0);
+    const isPast = new Date(b.booking_date).setHours(0,0,0,0) < nowDay;
+    const isCancelled = b.status === "cancelled";
+    let statusColor = (b.status === "pending") ? "#f39c12" : (isCancelled ? "#d9534f" : "#28a745");
+    let ackBtn = "";
+    if (role === "driver" && b.driver_line_id === userId && b.status === "confirmed") {
+        ackBtn = `<button class="warning" onclick="acknowledgeJob('${b.booking_id}')">👌 รับทราบงานนี้แล้ว</button>`;
+    }
+
+    let adminAssignBtn = "";
+    if (role === "admin" && !isCancelled) {
+        adminAssignBtn = `<button class="primary" style="background:#17a2b8; margin-bottom:8px;"
+        onclick="openAssignModal('${b.booking_id}')">👤 มอบหมายงาน (Admin)</button>`;
+    }
+
+    return `
+      <div class="card ${ (isPast || isCancelled) ? 'past-job' : '' }">
+        <div class="val-text"><b>${b.pickup_location} ➡️ ${b.dropoff_location}</b></div>
+        <div class="val-text">📅 ${formatThaiDateTime(b.booking_date, b.booking_time)}</div>
+        <div class="val-text">👤 จองโดย: ${b.user_display_name} |
+        🚗 ${b.vehicle_type}</div>
+        <div class="val-text">สถานะ: <span style="font-weight:bold; color:${statusColor}">${b.status.toUpperCase()} ${b.driver_name ?
+        '('+b.driver_name+')' : ''}</span></div>
+        ${(role === "driver" && b.status === "pending" && !isPast) ?
+        `<button class="success" onclick="acceptJob('${b.booking_id}')">✅ รับงานนี้</button>` : ""}
+        ${ackBtn}
+         
+        <div style="display:flex; gap:5px;">
+           <div style="width:100%">${adminAssignBtn}</div>
+        </div>
+
+        ${((b.booked_by === userId || b.driver_line_id === userId || role === "admin") && !isCancelled) ?
+        `<button class="danger" onclick="cancelBooking('${b.booking_id}')">❌ ยกเลิกงานนี้</button>` : ""}
+      </div>
+    `;
+};
+
+// [ADDED] Render Series Card
+const renderSeriesCard = (group) => {
+    const items = group.items;
+    const total = items.length;
+    const pendingCount = items.filter(i => i.status === 'pending').length;
+    const confirmedCount = items.filter(i => i.status === 'confirmed').length;
+    
+    // Check if Driver can accept ALL (must have some pending, and user is driver)
+    const canAcceptAll = (role === "driver" && pendingCount > 0);
+    
+    // Generate sub-cards
+    const subCards = items.map(renderCard).join("");
+    
+    return `
+      <div class="card series-card">
+         <div class="series-header">
+            <div>
+               <b>📦 งานต่อเนื่อง (${total} วัน)</b><br>
+               <span style="font-size:12px; color:#666;">${items[0].pickup_location} ...</span>
+            </div>
+            <div style="text-align:right; font-size:12px;">
+               <span style="color:#28a745">✅ ${confirmedCount}</span> | 
+               <span style="color:#f39c12">⏳ ${pendingCount}</span>
+            </div>
+         </div>
+         ${canAcceptAll ? `<button class="success" style="margin-bottom:10px;" onclick="acceptSeries('${group.batch_id}')">✅✅ รับงานทั้งหมด (${pendingCount} วัน)</button>` : ''}
+         <button class="secondary" onclick="document.getElementById('series_${group.batch_id}').style.display = (document.getElementById('series_${group.batch_id}').style.display=='none'?'block':'none')">
+            📜 ดูรายละเอียด / ซ่อน
+         </button>
+         <div id="series_${group.batch_id}" style="display:none; margin-top:10px; border-top:1px dashed #ccc; padding-top:10px;">
+            ${subCards}
+         </div>
+      </div>
+    `;
+};
 
 // ฟังก์ชันสำหรับ Toggle ประวัติงานเก่า
 function togglePast() {
@@ -432,7 +597,6 @@ async function confirmAssign() {
             booking_id: currentBookingIdToAssign, 
             assign_driver_id: drvId 
         }) });
-         
         closeAssignModal();
         alert("มอบหมายงานเรียบร้อย");
         await showHistory();
@@ -456,51 +620,109 @@ async function becomeAdmin() {
     toggleLoad(true);
     const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "verify_admin", line_user_id: userId, code: code }) }).then(r => r.json());
     if (res.success) { alert("ยินดีด้วย! คุณเปลี่ยนบทบาทเป็น Admin แล้ว"); location.reload(); }
-    else { alert("รหัสไม่ถูกต้อง!"); toggleLoad(false); }
+    else { alert("รหัสไม่ถูกต้อง!"); toggleLoad(false);
+    }
   }
 }
 
-async function cancelAdminRole() { if(confirm("ต้องการยกเลิกสถานะ Admin หรือไม่?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_admin", line_user_id: userId }) }); location.reload(); } }
+async function cancelAdminRole() { if(confirm("ต้องการยกเลิกสถานะ Admin หรือไม่?")) { toggleLoad(true);
+await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_admin", line_user_id: userId }) }); location.reload();
+} }
 
 async function submitBooking() {
-  const bDate = document.getElementById("booking_date").value;
+  // [MODIFIED] Use Flatpickr dates
+  const selectedDates = fpInstance.selectedDates;
+  if (selectedDates.length === 0) { alert("กรุณาระบุวันที่"); return; }
+  
   const bTime = document.getElementById("booking_time").value;
-  if(!bDate || !bTime) { alert("กรุณาระบุวันและเวลา"); return; }
+  if(!bTime) { alert("กรุณาระบุเวลา"); return; }
 
   toggleLoad(true);
   let actionType = "create_booking";
   if (role === "admin") actionType = "admin_create_booking";
   else if (role === "driver") actionType = "driver_create_booking";
+  
+  // Create Batch ID if multiple dates
+  const batchId = (selectedDates.length > 1) ? (userId + "_" + Date.now()) : "";
 
-  const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ 
-    action: actionType, 
-    line_user_id: userId, 
-    display_name: displayName, 
-    booking_date: bDate, 
-    booking_time: bTime, 
-    vehicle_type: document.getElementById("vehicle_type").value, 
-    passenger_count: document.getElementById("passenger_count").value, 
-    pickup_location: document.getElementById("pickup_location").value, 
-    dropoff_location: document.getElementById("dropoff_location").value, 
-    remark: document.getElementById("remark").value,
-    duration: document.getElementById("duration").value,
-    contact_mobile: document.getElementById("contact_mobile").value,
-    assign_driver_id: document.getElementById("assign_driver_id").value 
-  }) }).then(r => r.json());
-    
-  if (res.success) { 
-    document.getElementById("formBox").style.display = "none"; 
-    await showHistory(); 
+  // [MODIFIED] Loop through all selected dates
+  for (let d of selectedDates) {
+      // Format date manually to YYYY-MM-DD because d is a JS Date object
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+
+      await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ 
+        action: actionType, 
+        line_user_id: userId, 
+        display_name: displayName, 
+        booking_date: dateStr, // Use loop date
+        booking_time: bTime, 
+        vehicle_type: document.getElementById("vehicle_type").value, 
+        passenger_count: document.getElementById("passenger_count").value, 
+        pickup_location: document.getElementById("pickup_location").value, 
+        dropoff_location: document.getElementById("dropoff_location").value, 
+        remark: document.getElementById("remark").value,
+        duration: document.getElementById("duration").value,
+        contact_mobile: document.getElementById("contact_mobile").value,
+        assign_driver_id: document.getElementById("assign_driver_id").value,
+        batch_id: batchId // Send batch_id
+      }) });
   }
+
+  // After loop finishes
+  document.getElementById("formBox").style.display = "none"; 
+  // Reset form
+  document.getElementById("remark").value = "";
+  document.getElementById("pickup_location").value = "";
+  document.getElementById("dropoff_location").value = "";
+  fpInstance.clear();
+  
+  await showHistory(); 
   toggleLoad(false);
 }
 
-async function cancelBooking(id) { if(confirm("ยกเลิกงานนี้?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_booking", booking_id: id }) }); await showHistory(); } }
-async function registerDriver() { const p = prompt("เบอร์โทรศัพท์ของคุณ:"); if(p) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "register_driver", line_user_id: userId, mobile_phone: p }) }); location.reload(); } }
-async function editDriverMobile() { const p = prompt("ระบุเบอร์โทรศัพท์ใหม่ของคุณ:"); if(p) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "register_driver", line_user_id: userId, mobile_phone: p }) }); alert("แก้ไขเบอร์โทรศัพท์เรียบร้อยแล้ว"); location.reload(); } }
-async function cancelDriverRole() { if(confirm("ยกเลิกบทบาท?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_driver", line_user_id: userId }) }); location.reload(); } }
-async function acceptJob(id) { if(confirm("ยืนยันรับงาน?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "accept_job", booking_id: id, line_user_id: userId, display_name: displayName }) }); await showHistory(); } }
+async function cancelBooking(id) { if(confirm("ยกเลิกงานนี้?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_booking", booking_id: id }) });
+await showHistory(); } }
+async function registerDriver() { const p = prompt("เบอร์โทรศัพท์ของคุณ:"); if(p) { toggleLoad(true);
+await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "register_driver", line_user_id: userId, mobile_phone: p }) }); location.reload();
+} }
+async function editDriverMobile() { const p = prompt("ระบุเบอร์โทรศัพท์ใหม่ของคุณ:"); if(p) { toggleLoad(true);
+await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "register_driver", line_user_id: userId, mobile_phone: p }) }); alert("แก้ไขเบอร์โทรศัพท์เรียบร้อยแล้ว"); location.reload();
+} }
+async function cancelDriverRole() { if(confirm("ยกเลิกบทบาท?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_driver", line_user_id: userId }) });
+location.reload(); } }
+async function acceptJob(id) { if(confirm("ยืนยันรับงาน?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "accept_job", booking_id: id, line_user_id: userId, display_name: displayName }) });
+await showHistory(); } }
 function closeForm() { document.getElementById("formBox").style.display = "none"; }
+
+// [ADDED] Accept Series Function (Helper to accept all jobs in a batch)
+async function acceptSeries(batchId) {
+    if(!confirm("ยืนยันรับงานทั้งหมดในชุดนี้?")) return;
+    toggleLoad(true);
+    // Find all pending jobs in this batch from DOM or re-fetch? 
+    // Easier to re-fetch inside logic, but here we can just fetch all data again or pass IDs.
+    // For simplicity, we loop the 'accept_job' logic. 
+    // But we don't have the IDs easily here without parsing DOM or Global Var.
+    // Let's refactor showHistory to store data? Or simpler: 
+    // We already have the data in 'res' inside showHistory but it's local scope.
+    // We will do a quick fetch to get IDs of this batch.
+    
+    // Better approach: Since we don't want to change structure too much, 
+    // let's grab the IDs from the DOM (hidden input? no).
+    // Let's just fetch all bookings, filter by batch_id, and loop accept.
+    
+    const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => r.json());
+    const jobs = res.data.filter(b => b.batch_id === batchId && b.status === 'pending');
+    
+    for (let job of jobs) {
+         await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "accept_job", booking_id: job.booking_id, line_user_id: userId, display_name: displayName }) });
+    }
+    
+    await showHistory();
+    toggleLoad(false);
+}
 
 init();
 </script>
