@@ -149,7 +149,7 @@
       <option value="8">8 ชั่วโมง</option>
     </select>
 
-    <input type="text" id="contact_mobile" placeholder="เบอร์โทรติดต่อ">
+    <input type="tel" id="contact_mobile" placeholder="เบอร์โทรติดต่อ" inputmode="numeric" pattern="[0-9]*">
       
     <button class="primary" onclick="submitBooking()">บันทึกข้อมูล</button>
     <button class="secondary" onclick="closeForm()">ยกเลิก</button>
@@ -173,7 +173,7 @@
 </div>
 
 <script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbwBfWGOnO7I4HXHAgWYc2l1fXROqMaav5voO7vPEou6IJJkkuv-6_ibZzP_6CRs-SAEBA/exec";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbz-ylxt036LLWmv_SIFAYQ7Ew2GXVq1cXLXy34qkVJ-plhgYyeDrLr4yCAgL4iVFH7QgA/exec";
 let userId = "", role = "", mobile = "", displayName = "";
 let driverListCache = [];
 let currentBookingIdToAssign = null;
@@ -887,14 +887,9 @@ async function acceptSeries(batchId) {
     if(!confirm("ยืนยันรับงานทั้งหมดในชุดนี้?")) return;
     toggleLoad(true);
     
-    const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => r.json());
-    const jobs = res.data.filter(b => b.batch_id === batchId && b.status === 'pending');
+    await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "accept_series", batch_id: batchId, line_user_id: userId, display_name: displayName }) });
     
-    for(let job of jobs) {
-       await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "accept_job", booking_id: job.booking_id, line_user_id: userId, display_name: displayName }) });
-    }
-    
-    alert(`รับงานทั้งหมด ${jobs.length} รายการเรียบร้อย`);
+    alert("รับงานทั้งหมดเรียบร้อย");
     await showHistory();
     toggleLoad(false);
 }
