@@ -316,6 +316,24 @@ function formatThaiDateTime(dateVal, timeVal) {
   return dateStr + " | " + timeStr + " น.";
 }
 
+// [ADDED] คำนวณและแสดงวันสุดท้ายของงาน สำหรับงานที่ duration >= 24 ชม.
+function formatEndDate(dateVal, timeVal, durationVal) {
+  const dur = parseFloat(durationVal) || 0;
+  if (dur < 24) return ""; // ไม่เกิน 1 วัน → ไม่แสดง
+  const dateStr = String(dateVal).substring(0, 10);
+  let timeStr = "";
+  if (String(timeVal).includes("T")) {
+    const t = new Date(timeVal);
+    timeStr = t.getHours().toString().padStart(2,'0') + ":" + t.getMinutes().toString().padStart(2,'0');
+  } else {
+    timeStr = String(timeVal).substring(0, 5);
+  }
+  const start = new Date(dateStr + "T" + timeStr + ":00");
+  const end = new Date(start.getTime() + (dur * 60 * 60 * 1000));
+  const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+  return ` ถึง ${end.getDate()} ${months[end.getMonth()]} ${end.getFullYear() + 543}`;
+}
+
 async function init() {
   toggleLoad(true);
   try {
@@ -712,7 +730,7 @@ const renderCard = (b) => {
     return `
       <div class="card ${ (isPast || isCancelled) ? 'past-job' : '' }">
         <div class="val-text">${editBtn}<b>${b.pickup_location} ➡️ ${b.dropoff_location}</b></div>
-        <div class="val-text">📅 ${formatThaiDateTime(b.booking_date, b.booking_time)}</div>
+        <div class="val-text">📅 ${formatThaiDateTime(b.booking_date, b.booking_time)}${formatEndDate(b.booking_date, b.booking_time, b.duration)}</div>
         <div class="val-text">👤 จองโดย: ${b.user_display_name} |
         🚗 ${b.vehicle_type}</div>
         <div class="val-text">สถานะ: <span style="font-weight:bold; color:${statusColor}">${b.status.toUpperCase()} ${b.driver_name ?
