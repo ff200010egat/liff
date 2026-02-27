@@ -707,7 +707,7 @@ async function showHistory(useCache) {
 }
 
 // ฟังก์ชันย่อยสำหรับ Render Card (Single)
-const renderCard = (b) => {
+const renderCard = (b, hideEdit = false) => {
     const nowDay = new Date().setHours(0,0,0,0);
     const isPast = new Date(b.booking_date).setHours(0,0,0,0) < nowDay;
     const isCancelled = b.status === "cancelled";
@@ -724,8 +724,8 @@ const renderCard = (b) => {
     }
 
     // [ADDED] Edit button — แสดงเฉพาะ admin (ทุกงาน) หรือ user (งานตัวเอง) ที่ยังไม่ cancel
-    const canEdit = !isCancelled && (role === "admin" || (role !== "driver" && b.booked_by === userId));
-    const editBtn = canEdit
+    const canEdit = !hideEdit && !isCancelled && (role === "admin" || (role !== "driver" && b.booked_by === userId));
+const editBtn = canEdit
       ? `<span onclick="openEditModal('${b.booking_id}')" title="แก้ไขงาน" style="cursor:pointer; font-size:16px; margin-right:5px; vertical-align:middle;">✏️</span>`
       : "";
 
@@ -770,7 +770,7 @@ const renderSeriesCard = (group) => {
       : "";
     
     // Generate sub-cards
-    const subCards = items.map(renderCard).join("");
+    const subCards = items.map(item => renderCard(item, true)).join("");
     
     // สร้างรายการวันที่ทั้งหมด (เรียงตามวันที่)
     const sortedItems = [...items].sort((a, b) => new Date(a.booking_date) - new Date(b.booking_date));
