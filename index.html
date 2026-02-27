@@ -66,6 +66,9 @@
   }
   /* [ADDED] Styles for Series Card */
   .series-card { border-left: 5px solid #0a7cff; background: #f0f7ff; }
+  /* [ADDED] Style for Edit Modal box (wider + scrollable) */
+  .edit-modal-box { background:#fff; padding:20px; border-radius:12px; width:92%; max-width:460px;
+  text-align:left; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height:90vh; overflow-y:auto; }
 </style>
 </head>
 <body>
@@ -147,6 +150,16 @@
       <option value="6">6 ชั่วโมง</option>
       <option value="7">7 ชั่วโมง</option>
       <option value="8">8 ชั่วโมง</option>
+      <option value="24">1 วัน (24 ชั่วโมง)</option>
+      <option value="48">2 วัน (48 ชั่วโมง)</option>
+      <option value="72">3 วัน (72 ชั่วโมง)</option>
+      <option value="96">4 วัน (96 ชั่วโมง)</option>
+      <option value="120">5 วัน (120 ชั่วโมง)</option>
+      <option value="144">6 วัน (144 ชั่วโมง)</option>
+      <option value="168">7 วัน (168 ชั่วโมง)</option>
+      <option value="192">8 วัน (192 ชั่วโมง)</option>
+      <option value="216">9 วัน (216 ชั่วโมง)</option>
+      <option value="240">10 วัน (240 ชั่วโมง)</option>
     </select>
 
     <input type="tel" id="contact_mobile" placeholder="เบอร์โทรติดต่อ" inputmode="numeric" pattern="[0-9]*">
@@ -172,6 +185,71 @@
   </div>
 </div>
 
+<!-- [ADDED] Edit Modal -->
+<div id="editModal" class="modal-overlay" style="overflow-y:auto; padding:20px 0; align-items:flex-start;">
+  <div class="edit-modal-box">
+    <h3 style="color:#0a7cff; margin-top:0;">✏️ แก้ไขรายละเอียดงาน</h3>
+
+    <label>📅 วันที่เดินทาง</label>
+    <input type="text" id="edit_booking_date" placeholder="จิ้มเพื่อเลือกวันที่..." readonly style="background:#fff;">
+
+    <label>⏰ เวลาเดินทาง</label>
+    <input type="time" id="edit_booking_time">
+
+    <label>🚗 ประเภทรถ</label>
+    <select id="edit_vehicle_type">
+      <option value="ไม่ระบุ">ไม่ระบุ</option>
+      <option value="รถเก๋ง">รถเก๋ง</option>
+      <option value="รถกระบะ">รถกระบะ</option>
+      <option value="รถตู้">รถตู้</option>
+    </select>
+
+    <label>👥 จำนวนผู้โดยสาร</label>
+    <input type="number" id="edit_passenger_count" placeholder="จำนวนผู้โดยสาร">
+
+    <label>📍 จุดรับ (ต้นทาง)</label>
+    <input type="text" id="edit_pickup_location" placeholder="จุดรับ">
+
+    <label>🏁 จุดส่ง (ปลายทาง)</label>
+    <input type="text" id="edit_dropoff_location" placeholder="จุดส่ง">
+
+    <label>📝 รายละเอียดงาน</label>
+    <input type="text" id="edit_remark" placeholder="รายละเอียดงาน">
+
+    <label>⏱ ระยะเวลาใช้งาน</label>
+    <select id="edit_duration">
+      <option value="1">1 ชั่วโมง</option>
+      <option value="1.5">1.30 ชั่วโมง</option>
+      <option value="2">2 ชั่วโมง</option>
+      <option value="2.5">2.30 ชั่วโมง</option>
+      <option value="3">3 ชั่วโมง</option>
+      <option value="4">4 ชั่วโมง</option>
+      <option value="5">5 ชั่วโมง</option>
+      <option value="6">6 ชั่วโมง</option>
+      <option value="7">7 ชั่วโมง</option>
+      <option value="8">8 ชั่วโมง</option>
+      <option value="24">1 วัน (24 ชั่วโมง)</option>
+      <option value="48">2 วัน (48 ชั่วโมง)</option>
+      <option value="72">3 วัน (72 ชั่วโมง)</option>
+      <option value="96">4 วัน (96 ชั่วโมง)</option>
+      <option value="120">5 วัน (120 ชั่วโมง)</option>
+      <option value="144">6 วัน (144 ชั่วโมง)</option>
+      <option value="168">7 วัน (168 ชั่วโมง)</option>
+      <option value="192">8 วัน (192 ชั่วโมง)</option>
+      <option value="216">9 วัน (216 ชั่วโมง)</option>
+      <option value="240">10 วัน (240 ชั่วโมง)</option>
+    </select>
+
+    <label>📞 เบอร์โทรติดต่อ</label>
+    <input type="tel" id="edit_contact_mobile" placeholder="เบอร์โทรติดต่อ" inputmode="numeric">
+
+    <div style="display:flex; gap:10px; margin-top:4px;">
+      <button class="primary" onclick="submitEdit()">💾 บันทึก</button>
+      <button class="secondary" onclick="closeEditModal()">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const ENDPOINT = "https://script.google.com/macros/s/AKfycbz-ylxt036LLWmv_SIFAYQ7Ew2GXVq1cXLXy34qkVJ-plhgYyeDrLr4yCAgL4iVFH7QgA/exec";
 let userId = "", role = "", mobile = "", displayName = "";
@@ -182,6 +260,9 @@ let isSeriesMode = false;
 let fpInstance = null;
 // [OPTIMIZATION] Cache variable
 let cachedBookingsData = null;
+// [ADDED] Global variables for Edit feature
+let currentEditBooking = null;
+let fpEditInstance = null;
 
 function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
 
@@ -611,9 +692,15 @@ const renderCard = (b) => {
         onclick="openAssignModal('${b.booking_id}')">👤 มอบหมายงาน (Admin)</button>`;
     }
 
+    // [ADDED] Edit button — แสดงเฉพาะ admin (ทุกงาน) หรือ user (งานตัวเอง) ที่ยังไม่ cancel
+    const canEdit = !isCancelled && (role === "admin" || (role !== "driver" && b.booked_by === userId));
+    const editBtn = canEdit
+      ? `<span onclick="openEditModal('${b.booking_id}')" title="แก้ไขงาน" style="cursor:pointer; font-size:16px; margin-right:5px; vertical-align:middle;">✏️</span>`
+      : "";
+
     return `
       <div class="card ${ (isPast || isCancelled) ? 'past-job' : '' }">
-        <div class="val-text"><b>${b.pickup_location} ➡️ ${b.dropoff_location}</b></div>
+        <div class="val-text">${editBtn}<b>${b.pickup_location} ➡️ ${b.dropoff_location}</b></div>
         <div class="val-text">📅 ${formatThaiDateTime(b.booking_date, b.booking_time)}</div>
         <div class="val-text">👤 จองโดย: ${b.user_display_name} |
         🚗 ${b.vehicle_type}</div>
@@ -774,6 +861,83 @@ async function confirmAssign() {
         alert("เกิดข้อผิดพลาด: " + err.message);
         toggleLoad(false);
     }
+}
+
+// [ADDED] Edit Modal Functions
+function openEditModal(id) {
+  const b = (cachedBookingsData && cachedBookingsData.data || []).find(b => b.booking_id === id);
+  if (!b) return alert("ไม่พบข้อมูลงาน");
+  currentEditBooking = b;
+
+  // --- Populate fields ---
+  // booking_time: extract HH:MM
+  let timeStr = "";
+  if (String(b.booking_time).includes("T")) {
+    const t = new Date(b.booking_time);
+    timeStr = t.getHours().toString().padStart(2,'0') + ":" + t.getMinutes().toString().padStart(2,'0');
+  } else {
+    timeStr = String(b.booking_time).substring(0, 5);
+  }
+  document.getElementById("edit_booking_time").value = timeStr;
+  document.getElementById("edit_vehicle_type").value = b.vehicle_type || "ไม่ระบุ";
+  document.getElementById("edit_passenger_count").value = b.passenger_count || "";
+  document.getElementById("edit_pickup_location").value = b.pickup_location || "";
+  document.getElementById("edit_dropoff_location").value = b.dropoff_location || "";
+  document.getElementById("edit_remark").value = b.remark || "";
+  document.getElementById("edit_contact_mobile").value = b.contact_mobile || "";
+  document.getElementById("edit_duration").value = String(b.duration || "1");
+
+  // booking_date: extract YYYY-MM-DD
+  const dateStr = String(b.booking_date).substring(0, 10);
+
+  // Init flatpickr for edit date (destroy old instance first)
+  if (fpEditInstance) { fpEditInstance.destroy(); fpEditInstance = null; }
+  fpEditInstance = flatpickr("#edit_booking_date", {
+    dateFormat: "Y-m-d",
+    defaultDate: dateStr,
+    disableMobile: "true"
+  });
+
+  document.getElementById("editModal").style.display = "flex";
+}
+
+function closeEditModal() {
+  document.getElementById("editModal").style.display = "none";
+  currentEditBooking = null;
+  if (fpEditInstance) { fpEditInstance.destroy(); fpEditInstance = null; }
+}
+
+async function submitEdit() {
+  if (!currentEditBooking) return;
+  const newDate = document.getElementById("edit_booking_date").value;
+  if (!newDate) { alert("กรุณาระบุวันที่"); return; }
+  const newTime = document.getElementById("edit_booking_time").value;
+  if (!newTime) { alert("กรุณาระบุเวลา"); return; }
+
+  const bookingIdToUpdate = currentEditBooking.booking_id;
+  closeEditModal();
+  toggleLoad(true);
+
+  try {
+    await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({
+      action: "update_booking",
+      booking_id: bookingIdToUpdate,
+      booking_date: newDate,
+      booking_time: newTime,
+      vehicle_type: document.getElementById("edit_vehicle_type").value,
+      passenger_count: document.getElementById("edit_passenger_count").value,
+      pickup_location: document.getElementById("edit_pickup_location").value,
+      dropoff_location: document.getElementById("edit_dropoff_location").value,
+      remark: document.getElementById("edit_remark").value,
+      duration: document.getElementById("edit_duration").value,
+      contact_mobile: document.getElementById("edit_contact_mobile").value
+    })});
+    alert("✅ แก้ไขข้อมูลเรียบร้อย");
+    await showHistory();
+  } catch(err) {
+    alert("เกิดข้อผิดพลาด: " + err.message);
+    toggleLoad(false);
+  }
 }
 
 async function acknowledgeJob(id) {
