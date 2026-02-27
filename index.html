@@ -190,8 +190,17 @@
   <div class="edit-modal-box">
     <h3 style="color:#0a7cff; margin-top:0;">✏️ แก้ไขรายละเอียดงาน</h3>
 
-    <label>📅 วันที่เดินทาง</label>
-    <input type="text" id="edit_booking_date" placeholder="จิ้มเพื่อเลือกวันที่..." readonly style="background:#fff;">
+    <!-- [ADDED] แสดงเมื่อเป็น Series Edit -->
+    <div id="edit_series_info_row" style="display:none; background:#fff3cd; border:1px solid #ffeeba; border-radius:8px; padding:10px; margin-bottom:12px; font-size:14px; color:#856404;">
+      📦 แก้ไขงานทั้งชุด: <span id="edit_series_count"></span> งาน<br>
+      <span style="font-size:12px; color:#666;">(วันที่แต่ละงานจะคงเดิม แก้ไขได้เฉพาะข้อมูลด้านล่าง)</span>
+    </div>
+
+    <!-- [ADDED] ซ่อนช่องวันที่เมื่อเป็น Series Edit -->
+    <div id="edit_date_row">
+      <label>📅 วันที่เดินทาง</label>
+      <input type="text" id="edit_booking_date" placeholder="จิ้มเพื่อเลือกวันที่..." readonly style="background:#fff;">
+    </div>
 
     <label>⏰ เวลาเดินทาง</label>
     <input type="time" id="edit_booking_time">
@@ -263,6 +272,8 @@ let cachedBookingsData = null;
 // [ADDED] Global variables for Edit feature
 let currentEditBooking = null;
 let fpEditInstance = null;
+// [ADDED] Global variable for Series Edit
+let currentEditBatchId = null;
 
 function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
 
@@ -729,6 +740,14 @@ const renderSeriesCard = (group) => {
     
     // Check if Driver can accept ALL (must have some pending, and user is driver)
     const canAcceptAll = (role === "driver" && pendingCount > 0);
+
+    // [ADDED] canEditSeries: admin แก้ได้ทุก series, user แก้ได้เฉพาะ series ของตัวเอง, driver ไม่มีสิทธิ
+    const firstItem = items[0];
+    const hasAnyCancelled = items.every(i => i.status === 'cancelled');
+    const canEditSeries = !hasAnyCancelled && (role === "admin" || (role !== "driver" && firstItem.booked_by === userId));
+    const seriesEditBtn = canEditSeries
+      ? `<span onclick="openEditSeriesModal('${group.batch_id}')" title="แก้ไขงานทั้งชุด" style="cursor:pointer; font-size:16px; margin-right:6px; vertical-align:middle;">✏️</span>`
+      : "";
     
     // Generate sub-cards
     const subCards = items.map(renderCard).join("");
@@ -743,15 +762,15 @@ const renderSeriesCard = (group) => {
     }).join(" / ");
     
     // ใช้ข้อมูลจากงานแรก (เวลาและเส้นทางควรเหมือนกันทั้งหมด)
-    const firstItem = sortedItems[0];
-    const timeStr = String(firstItem.booking_time).includes("T") 
-        ? new Date(firstItem.booking_time).getHours().toString().padStart(2,'0')+":"+new Date(firstItem.booking_time).getMinutes().toString().padStart(2,'0')
-        : String(firstItem.booking_time).substring(0,5);
+    const firstSortedItem = sortedItems[0];
+    const timeStr = String(firstSortedItem.booking_time).includes("T") 
+        ? new Date(firstSortedItem.booking_time).getHours().toString().padStart(2,'0')+":"+new Date(firstSortedItem.booking_time).getMinutes().toString().padStart(2,'0')
+        : String(firstSortedItem.booking_time).substring(0,5);
     
     return `
       <div class="card series-card">
          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <b style="font-size:16px;">📦 งานเป็นชุด (${total} งาน)</b>
+            <b style="font-size:16px;">${seriesEditBtn}📦 งานเป็นชุด (${total} งาน)</b>
             <span style="font-size:13px;">
                <span style="color:#28a745; font-weight:bold;">✅ ${confirmedCount}</span> | 
                <span style="color:#f39c12; font-weight:bold;">⏳ ${pendingCount}</span>
@@ -763,7 +782,7 @@ const renderSeriesCard = (group) => {
                วันที่ ${dateList}
             </div>
             <div class="val-text" style="font-size:14px;">
-               | ${timeStr} น.  📍 <b>${firstItem.pickup_location} ➡️ ${firstItem.dropoff_location}</b>
+               | ${timeStr} น.  📍 <b>${firstSortedItem.pickup_location} ➡️ ${firstSortedItem.dropoff_location}</b>
             </div>
          </div>
          
@@ -863,14 +882,18 @@ async function confirmAssign() {
     }
 }
 
-// [ADDED] Edit Modal Functions
+// [ADDED] Edit Modal Functions (Single booking)
 function openEditModal(id) {
   const b = (cachedBookingsData && cachedBookingsData.data || []).find(b => b.booking_id === id);
   if (!b) return alert("ไม่พบข้อมูลงาน");
   currentEditBooking = b;
+  currentEditBatchId = null; // ไม่ใช่ series
+
+  // --- แสดง/ซ่อน ส่วนที่เกี่ยวกับ Series ---
+  document.getElementById("edit_series_info_row").style.display = "none";
+  document.getElementById("edit_date_row").style.display = "block";
 
   // --- Populate fields ---
-  // booking_time: extract HH:MM
   let timeStr = "";
   if (String(b.booking_time).includes("T")) {
     const t = new Date(b.booking_time);
@@ -887,10 +910,7 @@ function openEditModal(id) {
   document.getElementById("edit_contact_mobile").value = b.contact_mobile || "";
   document.getElementById("edit_duration").value = String(b.duration || "1");
 
-  // booking_date: extract YYYY-MM-DD
   const dateStr = String(b.booking_date).substring(0, 10);
-
-  // Init flatpickr for edit date (destroy old instance first)
   if (fpEditInstance) { fpEditInstance.destroy(); fpEditInstance = null; }
   fpEditInstance = flatpickr("#edit_booking_date", {
     dateFormat: "Y-m-d",
@@ -901,28 +921,74 @@ function openEditModal(id) {
   document.getElementById("editModal").style.display = "flex";
 }
 
+// [ADDED] openEditSeriesModal — เปิด modal แก้ไขทั้ง series
+function openEditSeriesModal(batchId) {
+  const allItems = (cachedBookingsData && cachedBookingsData.data || []).filter(b => b.batch_id === batchId);
+  if (!allItems || allItems.length === 0) return alert("ไม่พบข้อมูลงานชุดนี้");
+  currentEditBatchId = batchId;
+  currentEditBooking = null; // ไม่ใช่งานเดี่ยว
+
+  // ใช้ข้อมูลจากงานแรก (เวลา/เส้นทาง/รถ เหมือนกันทั้ง series)
+  const b = allItems[0];
+
+  // --- แสดง/ซ่อน ส่วนที่เกี่ยวกับ Series ---
+  document.getElementById("edit_series_info_row").style.display = "block";
+  document.getElementById("edit_series_count").innerText = allItems.length;
+  document.getElementById("edit_date_row").style.display = "none"; // ซ่อนช่องวันที่
+
+  // --- Populate fields ---
+  let timeStr = "";
+  if (String(b.booking_time).includes("T")) {
+    const t = new Date(b.booking_time);
+    timeStr = t.getHours().toString().padStart(2,'0') + ":" + t.getMinutes().toString().padStart(2,'0');
+  } else {
+    timeStr = String(b.booking_time).substring(0, 5);
+  }
+  document.getElementById("edit_booking_time").value = timeStr;
+  document.getElementById("edit_vehicle_type").value = b.vehicle_type || "ไม่ระบุ";
+  document.getElementById("edit_passenger_count").value = b.passenger_count || "";
+  document.getElementById("edit_pickup_location").value = b.pickup_location || "";
+  document.getElementById("edit_dropoff_location").value = b.dropoff_location || "";
+  document.getElementById("edit_remark").value = b.remark || "";
+  document.getElementById("edit_contact_mobile").value = b.contact_mobile || "";
+  document.getElementById("edit_duration").value = String(b.duration || "1");
+
+  // destroy flatpickr ถ้ามีค้างอยู่ (ไม่ใช้วันที่ใน series edit)
+  if (fpEditInstance) { fpEditInstance.destroy(); fpEditInstance = null; }
+
+  document.getElementById("editModal").style.display = "flex";
+}
+
 function closeEditModal() {
   document.getElementById("editModal").style.display = "none";
   currentEditBooking = null;
+  currentEditBatchId = null;
   if (fpEditInstance) { fpEditInstance.destroy(); fpEditInstance = null; }
 }
 
+// [MODIFIED] submitEdit — รองรับทั้ง single (update_booking) และ series (update_series)
 async function submitEdit() {
-  if (!currentEditBooking) return;
-  const newDate = document.getElementById("edit_booking_date").value;
-  if (!newDate) { alert("กรุณาระบุวันที่"); return; }
   const newTime = document.getElementById("edit_booking_time").value;
   if (!newTime) { alert("กรุณาระบุเวลา"); return; }
 
-  const bookingIdToUpdate = currentEditBooking.booking_id;
+  // กรณี single booking ต้องมีวันที่
+  if (currentEditBatchId === null) {
+    const newDate = document.getElementById("edit_booking_date").value;
+    if (!newDate) { alert("กรุณาระบุวันที่"); return; }
+  }
+
+  const isSeries = (currentEditBatchId !== null);
+  const idToSend = isSeries ? currentEditBatchId : currentEditBooking.booking_id;
+  const actionToSend = isSeries ? "update_series" : "update_booking";
+  const bodyKey = isSeries ? "batch_id" : "booking_id";
+
   closeEditModal();
   toggleLoad(true);
 
   try {
-    await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({
-      action: "update_booking",
-      booking_id: bookingIdToUpdate,
-      booking_date: newDate,
+    const payload = {
+      action: actionToSend,
+      [bodyKey]: idToSend,
       booking_time: newTime,
       vehicle_type: document.getElementById("edit_vehicle_type").value,
       passenger_count: document.getElementById("edit_passenger_count").value,
@@ -931,7 +997,13 @@ async function submitEdit() {
       remark: document.getElementById("edit_remark").value,
       duration: document.getElementById("edit_duration").value,
       contact_mobile: document.getElementById("edit_contact_mobile").value
-    })});
+    };
+    // เพิ่ม booking_date เฉพาะกรณีงานเดี่ยว
+    if (!isSeries) {
+      payload.booking_date = document.getElementById("edit_booking_date").value;
+    }
+
+    await fetch(ENDPOINT, { method: "POST", body: JSON.stringify(payload) });
     alert("✅ แก้ไขข้อมูลเรียบร้อย");
     await showHistory();
   } catch(err) {
