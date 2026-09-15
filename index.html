@@ -279,6 +279,24 @@ let currentEditBatchId = null;
 
 function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
 
+// [ADDED] Safe JSON Helper — กัน HTML response จาก GAS redirect ใน PC Browser
+// หาก GAS Deployment ตั้ง "Who has access" ไม่ใช่ "Anyone"
+// Browser บน PC จะได้รับ HTML Login page แทน JSON
+async function safeJson(response) {
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch(e) {
+    console.error("GAS returned non-JSON:", text.substring(0, 300));
+    throw new Error(
+      "ระบบได้รับข้อมูลผิดรูปแบบ (ไม่ใช่ JSON)\n" +
+      "อาจเกิดจาก GAS Deployment ต้อง Login Google\n\n" +
+      "กรุณาแจ้ง Admin ตรวจสอบการตั้งค่า:\n" +
+      "Deploy → Who has access → Anyone"
+    );
+  }
+}
+
 // [OPTIMIZATION #1] localStorage Cache Helper
 const Cache = {
   get: function(key) {
@@ -374,10 +392,11 @@ async function init() {
     }
 
     // [OPTIMIZATION #3] Parallel fetch
+    // [FIXED] ใช้ safeJson แทน .json() เพื่อกัน HTML response บน PC Browser
     try {
       const [userRes, bookingsRes] = await Promise.all([
-        fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "auto_register", line_user_id: userId, display_name: displayName }) }).then(r => r.json()),
-        fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => r.json())
+        fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "auto_register", line_user_id: userId, display_name: displayName }) }).then(r => safeJson(r)),
+        fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => safeJson(r))
       ]);
 
       role = userRes.role;
@@ -398,7 +417,8 @@ async function init() {
     } catch (fetchErr) {
       console.error("Fetch error:", fetchErr);
       if (!cached) {
-        const userRes = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "auto_register", line_user_id: userId, display_name: displayName }) }).then(r => r.json());
+        // [FIXED] ใช้ safeJson แทน .json() — fallback fetch
+        const userRes = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "auto_register", line_user_id: userId, display_name: displayName }) }).then(r => safeJson(r));
         role = userRes.role;
         mobile = userRes.mobile;
         renderUI();
@@ -578,7 +598,8 @@ async function showHistory(useCache) {
     res = cachedBookingsData;
   } else {
     if (!useCache) toggleLoad(true);
-    res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => r.json());
+    // [FIXED] ใช้ safeJson แทน .json() เพื่อกัน HTML response บน PC Browser
+    res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => safeJson(r));
     cachedBookingsData = res;
     Cache.set(`bookings_${userId}`, res, 5);
   }
