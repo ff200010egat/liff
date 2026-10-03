@@ -279,9 +279,9 @@ let currentEditBatchId = null;
 
 function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
 
-// [ADDED] Safe JSON Helper — กัน HTML response จาก GAS redirect ใน PC Browser
-// หาก GAS Deployment ตั้ง "Who has access" ไม่ใช่ "Anyone"
-// Browser บน PC จะได้รับ HTML Login page แทน JSON
+// =========================================================
+// [FIXED] Safe JSON Helper — กัน HTML response จาก GAS
+// =========================================================
 async function safeJson(response) {
   const text = await response.text();
   try {
@@ -290,11 +290,22 @@ async function safeJson(response) {
     console.error("GAS returned non-JSON:", text.substring(0, 300));
     throw new Error(
       "ระบบได้รับข้อมูลผิดรูปแบบ (ไม่ใช่ JSON)\n" +
-      "อาจเกิดจาก GAS Deployment ต้อง Login Google\n\n" +
-      "กรุณาแจ้ง Admin ตรวจสอบการตั้งค่า:\n" +
-      "Deploy → Who has access → Anyone"
+      "กรุณารีเฟรชหน้าเว็บ หรือแจ้ง Admin"
     );
   }
+}
+
+// =========================================================
+// [FIXED] gasPost — ส่ง request แบบ Simple Request (text/plain)
+// เพื่อหลีกเลี่ยง CORS preflight ที่ทำให้ GAS redirect บน PC Browser
+// มือถือ (LINE WebView) ใช้งานได้ทั้ง 2 แบบ แต่ PC Browser ต้องใช้ text/plain
+// =========================================================
+function gasPost(payload) {
+  return fetch(ENDPOINT, {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: { "Content-Type": "text/plain" }
+  }).then(r => safeJson(r));
 }
 
 // [OPTIMIZATION #1] localStorage Cache Helper
@@ -391,12 +402,11 @@ async function init() {
       }
     }
 
-    // [OPTIMIZATION #3] Parallel fetch
-    // [FIXED] ใช้ safeJson แทน .json() เพื่อกัน HTML response บน PC Browser
+    // [OPTIMIZATION #3] Parallel fetch — ใช้ gasPost แทน fetch โดยตรง
     try {
       const [userRes, bookingsRes] = await Promise.all([
-        fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "auto_register", line_user_id: userId, display_name: displayName }) }).then(r => safeJson(r)),
-        fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => safeJson(r))
+        gasPost({ action: "auto_register", line_user_id: userId, display_name: displayName }),
+        gasPost({ action: "get_all_bookings", line_user_id: userId })
       ]);
 
       role = userRes.role;
@@ -417,8 +427,7 @@ async function init() {
     } catch (fetchErr) {
       console.error("Fetch error:", fetchErr);
       if (!cached) {
-        // [FIXED] ใช้ safeJson แทน .json() — fallback fetch
-        const userRes = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "auto_register", line_user_id: userId, display_name: displayName }) }).then(r => safeJson(r));
+        const userRes = await gasPost({ action: "auto_register", line_user_id: userId, display_name: displayName });
         role = userRes.role;
         mobile = userRes.mobile;
         renderUI();
@@ -575,7 +584,7 @@ async function loadDriversList() {
   }
   
   // Fetch fresh in background
-  const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_drivers_list" }) }).then(r => r.json());
+  const res = await gasPost({ action: "get_drivers_list" });
   if (res.success) {
     driverListCache = res.drivers;
     Cache.set('drivers_list', res.drivers, 10);
@@ -598,8 +607,7 @@ async function showHistory(useCache) {
     res = cachedBookingsData;
   } else {
     if (!useCache) toggleLoad(true);
-    // [FIXED] ใช้ safeJson แทน .json() เพื่อกัน HTML response บน PC Browser
-    res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "get_all_bookings", line_user_id: userId }) }).then(r => safeJson(r));
+    res = await gasPost({ action: "get_all_bookings", line_user_id: userId });
     cachedBookingsData = res;
     Cache.set(`bookings_${userId}`, res, 5);
   }
@@ -906,15 +914,7 @@ async function confirmAssign() {
 
     toggleLoad(true);
     try {
-        // ใช้ pattern เดียวกับ acceptJob ที่ work
-        await fetch(ENDPOINT, { 
-            method: "POST", 
-            body: JSON.stringify({ 
-                action: "assign_driver", 
-                booking_id: bookingIdToSend, 
-                assign_driver_id: drvId 
-            }) 
-        });
+        await gasPost({ action: "assign_driver", booking_id: bookingIdToSend, assign_driver_id: drvId });
         alert("มอบหมายงานเรียบร้อย");
         await showHistory();
     } catch(err) {
@@ -1044,7 +1044,7 @@ async function submitEdit() {
       payload.booking_date = document.getElementById("edit_booking_date").value;
     }
 
-    await fetch(ENDPOINT, { method: "POST", body: JSON.stringify(payload) });
+    await gasPost(payload);
     alert("✅ แก้ไขข้อมูลเรียบร้อย");
     await showHistory();
   } catch(err) {
@@ -1056,7 +1056,7 @@ async function submitEdit() {
 async function acknowledgeJob(id) {
   if(confirm("ยืนยันการรับทราบงานที่มอบหมาย?")) {
     toggleLoad(true);
-    await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "acknowledge_job", booking_id: id, line_user_id: userId, display_name: displayName }) });
+    await gasPost({ action: "acknowledge_job", booking_id: id, line_user_id: userId, display_name: displayName });
     alert("ส่งการยืนยันให้ Admin เรียบร้อย");
     await showHistory();
     toggleLoad(false);
@@ -1067,7 +1067,7 @@ async function becomeAdmin() {
   const code = prompt("กรุณาระบุรหัสยืนยัน 6 หลัก เพื่อเป็น Admin:");
   if (code) {
     toggleLoad(true);
-    const res = await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "verify_admin", line_user_id: userId, code: code }) }).then(r => r.json());
+    const res = await gasPost({ action: "verify_admin", line_user_id: userId, code: code });
     if (res.success) { alert("ยินดีด้วย! คุณเปลี่ยนบทบาทเป็น Admin แล้ว"); location.reload(); }
     else { alert("รหัสไม่ถูกต้อง!"); toggleLoad(false);
     }
@@ -1075,7 +1075,7 @@ async function becomeAdmin() {
 }
 
 async function cancelAdminRole() { if(confirm("ต้องการยกเลิกสถานะ Admin หรือไม่?")) { toggleLoad(true);
-await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_admin", line_user_id: userId }) }); location.reload();
+await gasPost({ action: "cancel_admin", line_user_id: userId }); location.reload();
 } }
 
 async function submitBooking() {
@@ -1115,7 +1115,7 @@ async function submitBooking() {
       const day = String(d.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
 
-      await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ 
+      await gasPost({ 
         action: actionType, 
         line_user_id: userId, 
         display_name: displayName, 
@@ -1130,7 +1130,7 @@ async function submitBooking() {
         contact_mobile: document.getElementById("contact_mobile").value,
         assign_driver_id: document.getElementById("assign_driver_id").value,
         batch_id: batchId // Send batch_id
-      }) });
+      });
   }
 
   // After loop finishes
@@ -1145,17 +1145,17 @@ async function submitBooking() {
   toggleLoad(false);
 }
 
-async function cancelBooking(id) { if(confirm("ยกเลิกงานนี้?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_booking", booking_id: id }) });
+async function cancelBooking(id) { if(confirm("ยกเลิกงานนี้?")) { toggleLoad(true); await gasPost({ action: "cancel_booking", booking_id: id });
 await showHistory(); } }
 async function registerDriver() { const p = prompt("เบอร์โทรศัพท์ของคุณ:"); if(p) { toggleLoad(true);
-await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "register_driver", line_user_id: userId, mobile_phone: p }) }); location.reload();
+await gasPost({ action: "register_driver", line_user_id: userId, mobile_phone: p }); location.reload();
 } }
 async function editDriverMobile() { const p = prompt("ระบุเบอร์โทรศัพท์ใหม่ของคุณ:"); if(p) { toggleLoad(true);
-await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "register_driver", line_user_id: userId, mobile_phone: p }) }); alert("แก้ไขเบอร์โทรศัพท์เรียบร้อยแล้ว"); location.reload();
+await gasPost({ action: "register_driver", line_user_id: userId, mobile_phone: p }); alert("แก้ไขเบอร์โทรศัพท์เรียบร้อยแล้ว"); location.reload();
 } }
-async function cancelDriverRole() { if(confirm("ยกเลิกบทบาท?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "cancel_driver", line_user_id: userId }) });
+async function cancelDriverRole() { if(confirm("ยกเลิกบทบาท?")) { toggleLoad(true); await gasPost({ action: "cancel_driver", line_user_id: userId });
 location.reload(); } }
-async function acceptJob(id) { if(confirm("ยืนยันรับงาน?")) { toggleLoad(true); await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "accept_job", booking_id: id, line_user_id: userId, display_name: displayName }) });
+async function acceptJob(id) { if(confirm("ยืนยันรับงาน?")) { toggleLoad(true); await gasPost({ action: "accept_job", booking_id: id, line_user_id: userId, display_name: displayName });
 await showHistory(); } }
 function closeForm() { document.getElementById("formBox").style.display = "none"; }
 
@@ -1164,7 +1164,7 @@ async function acceptSeries(batchId) {
     if(!confirm("ยืนยันรับงานทั้งหมดในชุดนี้?")) return;
     toggleLoad(true);
     
-    await fetch(ENDPOINT, { method: "POST", body: JSON.stringify({ action: "accept_series", batch_id: batchId, line_user_id: userId, display_name: displayName }) });
+    await gasPost({ action: "accept_series", batch_id: batchId, line_user_id: userId, display_name: displayName });
     
     alert("รับงานทั้งหมดเรียบร้อย");
     await showHistory();
