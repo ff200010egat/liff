@@ -53,14 +53,16 @@
   background: #fff; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
   }
 
-  /* [FIXED] ใช้ visibility แทน display:none เพื่อให้ animation หมุนได้บน PC Chrome */
+  /* [FIXED v2] spinner: ใช้ animation-play-state เพื่อให้หมุนได้บน PC Chrome */
   #loading { display:flex; visibility:hidden; opacity:0; pointer-events:none;
   position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column;
   transition: opacity 0.15s ease;
   }
   #loading.active { visibility:visible; opacity:1; pointer-events:auto; }
   .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #0a7cff; border-radius: 50%; width: 45px; height: 45px;
-  animation: spin 1s linear infinite; will-change: transform; transform: translateZ(0); }
+  animation: spin 1s linear infinite; animation-play-state: paused;
+  will-change: transform; transform: translateZ(0); }
+  #loading.active .spinner { animation-play-state: running; }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg);
   } }
 
@@ -400,7 +402,7 @@ async function init() {
       pImg.style.display = "block";
     }
 
-    // [OPTIMIZATION #1] Try cache first
+    // [OPTIMIZATION #1] Try cache first — แสดง UI จาก cache ทันที
     const cacheKey = `user_${userId}`;
     const cached = Cache.get(cacheKey);
 
@@ -414,18 +416,16 @@ async function init() {
       if (cachedBookings) {
         cachedBookingsData = cachedBookings;
         setLoadStatus("แสดงข้อมูลจาก cache...");
-        showHistory(true);
+        showHistory(true); // toggleLoad(false) เรียกภายใน showHistory
       }
+      // มี cache แล้ว → UI ขึ้นแล้ว → refresh เงียบๆ ข้างหลัง ไม่แสดง overlay ซ้ำ
     }
 
-    // [OPTIMIZATION #3] Parallel fetch — ใช้ gasPost แทน fetch โดยตรง
-    setLoadStatus("โหลดข้อมูลงานจากเซิร์ฟเวอร์...");
+    // [OPTIMIZATION #3] แยก 2 ขั้น: register ก่อน (render UI เร็ว) แล้วค่อย load bookings
     try {
-      const [userRes, bookingsRes] = await Promise.all([
-        gasPost({ action: "auto_register", line_user_id: userId, display_name: displayName }),
-        gasPost({ action: "get_all_bookings", line_user_id: userId })
-      ]);
-
+      // ขั้น 1: register / ดึงข้อมูล user (เร็ว)
+      if (!cached) setLoadStatus("เชื่อมต่อเซิร์ฟเวอร์...");
+      const userRes = await gasPost({ action: "auto_register", line_user_id: userId, display_name: displayName });
       role = userRes.role;
       mobile = userRes.mobile;
       Cache.set(cacheKey, { role, mobile }, 60);
@@ -437,22 +437,26 @@ async function init() {
         renderUI();
       }
 
-      setLoadStatus("แสดงรายการจอง...");
+      // ขั้น 2: โหลด bookings (ช้ากว่า — ถ้ามี cache แล้ว overlay ปิดไปแล้ว ขั้นนี้จะ refresh เงียบๆ)
+      if (!cached) setLoadStatus("โหลดรายการจอง...");
+      const bookingsRes = await gasPost({ action: "get_all_bookings", line_user_id: userId });
       cachedBookingsData = bookingsRes;
       Cache.set(`bookings_${userId}`, bookingsRes, 5);
-      showHistory(false);
-      
+      showHistory(false); // อัปเดต list (toggleLoad(false) เรียกภายใน)
+
     } catch (fetchErr) {
       console.error("Fetch error:", fetchErr);
       if (!cached) {
         setLoadStatus("ลองโหลดใหม่อีกครั้ง...");
-        const userRes = await gasPost({ action: "auto_register", line_user_id: userId, display_name: displayName });
-        role = userRes.role;
-        mobile = userRes.mobile;
-        renderUI();
-        initFlatpickr();
-        setLoadStatus("โหลดรายการจอง...");
-        await showHistory(false);
+        try {
+          const userRes2 = await gasPost({ action: "auto_register", line_user_id: userId, display_name: displayName });
+          role = userRes2.role;
+          mobile = userRes2.mobile;
+          renderUI();
+          initFlatpickr();
+          setLoadStatus("โหลดรายการจอง...");
+          await showHistory(false);
+        } catch(e2) { toggleLoad(false); }
       }
     }
     
@@ -932,7 +936,7 @@ async function confirmAssign() {
 
     if(!confirm(`ทบทวนรายการ:\nมอบหมายงานให้: ${drvName}\nยืนยันหรือไม่?`)) return;
 
-    toggleLoad(true);
+    toggleLoad(true, "กำลังมอบหมายงาน...");
     try {
         await gasPost({ action: "assign_driver", booking_id: bookingIdToSend, assign_driver_id: drvId });
         alert("มอบหมายงานเรียบร้อย");
@@ -1044,7 +1048,7 @@ async function submitEdit() {
   const bodyKey = isSeries ? "batch_id" : "booking_id";
 
   closeEditModal();
-  toggleLoad(true);
+  toggleLoad(true, "กำลังบันทึกการแก้ไข...");
 
   try {
     const payload = {
@@ -1075,7 +1079,7 @@ async function submitEdit() {
 
 async function acknowledgeJob(id) {
   if(confirm("ยืนยันการรับทราบงานที่มอบหมาย?")) {
-    toggleLoad(true);
+    toggleLoad(true, "กำลังส่งการรับทราบ...");
     await gasPost({ action: "acknowledge_job", booking_id: id, line_user_id: userId, display_name: displayName });
     alert("ส่งการยืนยันให้ Admin เรียบร้อย");
     await showHistory();
@@ -1086,7 +1090,7 @@ async function acknowledgeJob(id) {
 async function becomeAdmin() {
   const code = prompt("กรุณาระบุรหัสยืนยัน 6 หลัก เพื่อเป็น Admin:");
   if (code) {
-    toggleLoad(true);
+    toggleLoad(true, "กำลังยืนยันรหัส Admin...");
     const res = await gasPost({ action: "verify_admin", line_user_id: userId, code: code });
     if (res.success) { alert("ยินดีด้วย! คุณเปลี่ยนบทบาทเป็น Admin แล้ว"); location.reload(); }
     else { alert("รหัสไม่ถูกต้อง!"); toggleLoad(false);
@@ -1094,7 +1098,7 @@ async function becomeAdmin() {
   }
 }
 
-async function cancelAdminRole() { if(confirm("ต้องการยกเลิกสถานะ Admin หรือไม่?")) { toggleLoad(true);
+async function cancelAdminRole() { if(confirm("ต้องการยกเลิกสถานะ Admin หรือไม่?")) { toggleLoad(true, "กำลังยกเลิก Admin...");
 await gasPost({ action: "cancel_admin", line_user_id: userId }); location.reload();
 } }
 
@@ -1119,7 +1123,7 @@ async function submitBooking() {
   const bTime = document.getElementById("booking_time").value;
   if(!bTime) { alert("กรุณาระบุเวลา"); return; }
 
-  toggleLoad(true);
+  toggleLoad(true, "กำลังบันทึกงาน...");
   let actionType = "create_booking";
   if (role === "admin") actionType = "admin_create_booking";
   else if (role === "driver") actionType = "driver_create_booking";
@@ -1165,24 +1169,24 @@ async function submitBooking() {
   toggleLoad(false);
 }
 
-async function cancelBooking(id) { if(confirm("ยกเลิกงานนี้?")) { toggleLoad(true); await gasPost({ action: "cancel_booking", booking_id: id });
+async function cancelBooking(id) { if(confirm("ยกเลิกงานนี้?")) { toggleLoad(true, "กำลังยกเลิกงาน..."); await gasPost({ action: "cancel_booking", booking_id: id });
 await showHistory(); } }
-async function registerDriver() { const p = prompt("เบอร์โทรศัพท์ของคุณ:"); if(p) { toggleLoad(true);
+async function registerDriver() { const p = prompt("เบอร์โทรศัพท์ของคุณ:"); if(p) { toggleLoad(true, "กำลังสมัครพนักงานขับรถ...");
 await gasPost({ action: "register_driver", line_user_id: userId, mobile_phone: p }); location.reload();
 } }
-async function editDriverMobile() { const p = prompt("ระบุเบอร์โทรศัพท์ใหม่ของคุณ:"); if(p) { toggleLoad(true);
+async function editDriverMobile() { const p = prompt("ระบุเบอร์โทรศัพท์ใหม่ของคุณ:"); if(p) { toggleLoad(true, "กำลังอัปเดตเบอร์โทร...");
 await gasPost({ action: "register_driver", line_user_id: userId, mobile_phone: p }); alert("แก้ไขเบอร์โทรศัพท์เรียบร้อยแล้ว"); location.reload();
 } }
-async function cancelDriverRole() { if(confirm("ยกเลิกบทบาท?")) { toggleLoad(true); await gasPost({ action: "cancel_driver", line_user_id: userId });
+async function cancelDriverRole() { if(confirm("ยกเลิกบทบาท?")) { toggleLoad(true, "กำลังยกเลิกบทบาท..."); await gasPost({ action: "cancel_driver", line_user_id: userId });
 location.reload(); } }
-async function acceptJob(id) { if(confirm("ยืนยันรับงาน?")) { toggleLoad(true); await gasPost({ action: "accept_job", booking_id: id, line_user_id: userId, display_name: displayName });
+async function acceptJob(id) { if(confirm("ยืนยันรับงาน?")) { toggleLoad(true, "กำลังรับงาน..."); await gasPost({ action: "accept_job", booking_id: id, line_user_id: userId, display_name: displayName });
 await showHistory(); } }
 function closeForm() { document.getElementById("formBox").style.display = "none"; }
 
 // [ADDED] Accept Series Function (Helper to accept all jobs in a batch)
 async function acceptSeries(batchId) {
     if(!confirm("ยืนยันรับงานทั้งหมดในชุดนี้?")) return;
-    toggleLoad(true);
+    toggleLoad(true, "กำลังรับงานทั้งชุด...");
     
     await gasPost({ action: "accept_series", batch_id: batchId, line_user_id: userId, display_name: displayName });
     
