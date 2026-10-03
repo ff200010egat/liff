@@ -53,10 +53,14 @@
   background: #fff; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
   }
 
-  #loading { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column;
+  /* [FIXED] ใช้ visibility แทน display:none เพื่อให้ animation หมุนได้บน PC Chrome */
+  #loading { display:flex; visibility:hidden; opacity:0; pointer-events:none;
+  position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column;
+  transition: opacity 0.15s ease;
   }
+  #loading.active { visibility:visible; opacity:1; pointer-events:auto; }
   .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #0a7cff; border-radius: 50%; width: 45px; height: 45px;
-  animation: spin 1s linear infinite; }
+  animation: spin 1s linear infinite; will-change: transform; transform: translateZ(0); }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg);
   } }
 
@@ -76,6 +80,7 @@
 <div id="loading">
   <div class="spinner"></div>
   <p style="margin-top:12px; font-weight:bold; color:#0a7cff;">กำลังโหลดข้อมูล...</p>
+  <p id="loadingStatus" style="margin-top:4px; font-size:13px; color:#666; min-height:18px;"></p>
 </div>
 
 <div class="admin-tools">
@@ -277,7 +282,16 @@ let fpEditInstance = null;
 // [ADDED] Global variable for Series Edit
 let currentEditBatchId = null;
 
-function toggleLoad(s) { document.getElementById("loading").style.display = s ? "flex" : "none"; }
+function toggleLoad(s, status) {
+  const el = document.getElementById("loading");
+  if (s) { el.classList.add("active"); }
+  else { el.classList.remove("active"); setLoadStatus(""); }
+  if (status !== undefined) setLoadStatus(status);
+}
+function setLoadStatus(msg) {
+  const el = document.getElementById("loadingStatus");
+  if (el) el.innerText = msg || "";
+}
 
 // =========================================================
 // [FIXED] Safe JSON Helper — กัน HTML response จาก GAS
@@ -366,18 +380,19 @@ function formatEndDate(dateVal, timeVal, durationVal) {
 }
 
 async function init() {
-  toggleLoad(true);
+  toggleLoad(true, "กำลังเชื่อมต่อ LINE...");
   try {
     await liff.init({ liffId: "2008934745-qU0fPztf" });
     if (!liff.isLoggedIn()) {
       liff.login();
       return; // Stop here, will reload after login
     }
-    
+
+    setLoadStatus("ดึงข้อมูลโปรไฟล์...");
     const p = await liff.getProfile();
-    userId = p.userId; 
+    userId = p.userId;
     displayName = p.displayName;
-      
+
     document.getElementById("username").innerText = displayName;
     if (p.pictureUrl) {
       const pImg = document.getElementById("profileImg");
@@ -388,21 +403,23 @@ async function init() {
     // [OPTIMIZATION #1] Try cache first
     const cacheKey = `user_${userId}`;
     const cached = Cache.get(cacheKey);
-    
+
     if (cached) {
       role = cached.role;
       mobile = cached.mobile;
       renderUI();
       initFlatpickr();
-      
+
       const cachedBookings = Cache.get(`bookings_${userId}`);
       if (cachedBookings) {
         cachedBookingsData = cachedBookings;
+        setLoadStatus("แสดงข้อมูลจาก cache...");
         showHistory(true);
       }
     }
 
     // [OPTIMIZATION #3] Parallel fetch — ใช้ gasPost แทน fetch โดยตรง
+    setLoadStatus("โหลดข้อมูลงานจากเซิร์ฟเวอร์...");
     try {
       const [userRes, bookingsRes] = await Promise.all([
         gasPost({ action: "auto_register", line_user_id: userId, display_name: displayName }),
@@ -412,14 +429,15 @@ async function init() {
       role = userRes.role;
       mobile = userRes.mobile;
       Cache.set(cacheKey, { role, mobile }, 60);
-      
+
       if (!cached) {
         renderUI();
         initFlatpickr();
       } else if (cached.role !== role) {
         renderUI();
       }
-      
+
+      setLoadStatus("แสดงรายการจอง...");
       cachedBookingsData = bookingsRes;
       Cache.set(`bookings_${userId}`, bookingsRes, 5);
       showHistory(false);
@@ -427,11 +445,13 @@ async function init() {
     } catch (fetchErr) {
       console.error("Fetch error:", fetchErr);
       if (!cached) {
+        setLoadStatus("ลองโหลดใหม่อีกครั้ง...");
         const userRes = await gasPost({ action: "auto_register", line_user_id: userId, display_name: displayName });
         role = userRes.role;
         mobile = userRes.mobile;
         renderUI();
         initFlatpickr();
+        setLoadStatus("โหลดรายการจอง...");
         await showHistory(false);
       }
     }
@@ -606,7 +626,7 @@ async function showHistory(useCache) {
   if (useCache && cachedBookingsData) {
     res = cachedBookingsData;
   } else {
-    if (!useCache) toggleLoad(true);
+    if (!useCache) toggleLoad(true, "โหลดรายการจองล่าสุด...");
     res = await gasPost({ action: "get_all_bookings", line_user_id: userId });
     cachedBookingsData = res;
     Cache.set(`bookings_${userId}`, res, 5);
