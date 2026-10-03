@@ -286,8 +286,15 @@ let currentEditBatchId = null;
 
 function toggleLoad(s, status) {
   const el = document.getElementById("loading");
-  if (s) { el.classList.add("active"); }
-  else { el.classList.remove("active"); setLoadStatus(""); }
+  if (s) {
+    el.classList.add("active");
+    // [FIXED] force spinner animation restart บน PC Chrome
+    const sp = el.querySelector(".spinner");
+    if (sp) { sp.style.animation = "none"; sp.offsetWidth; sp.style.animation = ""; }
+  } else {
+    el.classList.remove("active");
+    setLoadStatus("");
+  }
   if (status !== undefined) setLoadStatus(status);
 }
 function setLoadStatus(msg) {
